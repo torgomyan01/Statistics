@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model countries {
+  id Int @id @default(autoincrement())
+
+  country_name   String @db.VarChar(255)
+  country_code   String @db.VarChar(100)
+  Indicator_name String @db.VarChar(1000)
+  indicator_code String @db.VarChar(100)
+
+  object Json
+}
