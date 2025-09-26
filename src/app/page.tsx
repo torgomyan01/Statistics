@@ -1,10 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import PreloaderPage from "@/components/pages/home/preloader-page";
 
 const DynamicMap = dynamic(() => import("@/components/pages/home/home"), {
   ssr: false,
-  loading: () => <p>Loading map...</p>,
+  loading: () => <PreloaderPage />,
 });
 
 function Page() {
