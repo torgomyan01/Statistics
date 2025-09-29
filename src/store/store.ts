@@ -1,7 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
+import siteInfo from "@/redux/info";
 
 export const store = configureStore({
-  reducer: {},
+  reducer: {
+    siteInfo,
+  },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,

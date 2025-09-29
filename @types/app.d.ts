@@ -6,3 +6,10 @@ declare interface ICountryData {
   indicator_code: string;
   object: any;
 }
+
+declare interface IStateSiteInfo {
+  siteInfo: {
+    selectedIndicator: string[];
+    selectedScoreYear: number;
+  };
+}

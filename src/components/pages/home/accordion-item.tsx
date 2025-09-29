@@ -1,13 +1,28 @@
 import { useState } from "react";
 import clsx from "clsx";
+import { useDispatch, useSelector } from "react-redux";
+import { setInfo, setRemoveInfo } from "@/redux/info";
 
 interface IThisProps {
   item: ICountryData[];
+  index: number;
 }
 
-function AccordionItem({ item }: IThisProps) {
+function AccordionItem({ item, index }: IThisProps) {
+  const dispatch = useDispatch();
+  const indicatorCode = useSelector(
+    (state: IStateSiteInfo) => state.siteInfo.selectedIndicator,
+  );
+
   const [openClose, setOpenClose] = useState(false);
-  const [splitCount, setSplitCount] = useState(5);
+
+  function AddNewIndicatorCode(code: string) {
+    dispatch(setInfo(code));
+  }
+
+  function RemoveIndicatorCode(code: string) {
+    dispatch(setRemoveInfo(code));
+  }
 
   return (
     <div className="px-2 border-b border-gray-300 py-2 mb-1">
@@ -20,7 +35,7 @@ function AccordionItem({ item }: IThisProps) {
         )}
         onClick={() => setOpenClose(!openClose)}
       >
-        {item[0].Indicator_name}
+        Group {index + 1}
         <i
           className={clsx(
             "fa-solid fa-chevron-down text-[11px] transform transition",
@@ -33,32 +48,30 @@ function AccordionItem({ item }: IThisProps) {
 
       <div className="pl-4">
         {openClose &&
-          item.slice(0, splitCount).map((data, index) => (
+          item.map((data, index) => (
             <div
               key={`data__${index}`}
-              className={clsx(
-                "text-[13px] border-b border-gray-200 py-2 flex-jsb-c",
-                {
-                  "!border-transparent": index === splitCount - 1,
-                },
-              )}
+              className="text-[13px] border-b border-gray-200 py-2 flex-jsb-c"
             >
               {data.Indicator_name}
 
-              <b className="cursor-pointer text-blue-600">Add</b>
+              {indicatorCode.includes(data.indicator_code) ? (
+                <b
+                  className="cursor-pointer text-red-600"
+                  onClick={() => RemoveIndicatorCode(data.indicator_code)}
+                >
+                  X
+                </b>
+              ) : (
+                <b
+                  className="cursor-pointer text-blue-600"
+                  onClick={() => AddNewIndicatorCode(data.indicator_code)}
+                >
+                  Add
+                </b>
+              )}
             </div>
           ))}
-
-        {openClose && (
-          <div className="flex-je-c mb-1">
-            <span
-              className="text-[12px] cursor-pointer text-blue-600 font-semibold"
-              onClick={() => setSplitCount(item.length - 1)}
-            >
-              View more
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );

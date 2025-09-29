@@ -9,12 +9,20 @@ datasource db {
 }
 
 model countries {
-  id Int @id @default(autoincrement())
-
+  id             Int    @id @default(autoincrement())
   country_name   String @db.VarChar(255)
   country_code   String @db.VarChar(100)
   Indicator_name String @db.VarChar(1000)
   indicator_code String @db.VarChar(100)
+  object         Json
+}
 
-  object Json
+model country {
+  id        Int     @id @default(autoincrement())
+  iso       String  @db.Char(2)
+  name      String  @db.VarChar(80)
+  nicename  String  @db.VarChar(80)
+  iso3      String? @db.Char(3)
+  numcode   Int?    @db.SmallInt
+  phonecode Int
 }

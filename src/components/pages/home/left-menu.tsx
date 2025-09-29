@@ -47,7 +47,11 @@ function LeftMenu() {
           {filteredRes?.map(
             (data, index) =>
               data && (
-                <AccordionItem item={data} key={`accardion-code-${index}`} />
+                <AccordionItem
+                  item={data}
+                  key={`accardion-code-${index}`}
+                  index={index}
+                />
               ),
           )}
         </div>
