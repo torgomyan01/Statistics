@@ -2,13 +2,9 @@
 
 import { prisma } from "@/lib/prisma";
 
-export async function ActionGetSelectedCountry() {
+export async function ActionGetAllCountry() {
   try {
-    const res = await prisma.countries.findMany({
-      where: {
-        country_code: "ARM",
-      },
-    });
+    const res = await prisma.country.findMany();
 
     return {
       status: "ok",

@@ -7,6 +7,7 @@ import NextTopLoader from "nextjs-toploader";
 
 import { Providers } from "@/app/providers";
 import { UiProviders } from "@/components/UIProvider/ui-provider";
+import { ThemeProvider } from "next-themes";
 
 export async function generateMetadata() {
   return {
@@ -30,13 +31,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" suppressHydrationWarning={true}>
-      <body>
-        <NextTopLoader />
-        <Providers>
-          <UiProviders>{children}</UiProviders>
-        </Providers>
-      </body>
-    </html>
+    <ThemeProvider attribute="class">
+      <html lang="ru" suppressHydrationWarning={true}>
+        <body>
+          <NextTopLoader />
+          <Providers>
+            <UiProviders>{children}</UiProviders>
+          </Providers>
+        </body>
+      </html>
+    </ThemeProvider>
   );
 }

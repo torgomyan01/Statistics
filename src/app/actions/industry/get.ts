@@ -6,7 +6,7 @@ export async function ActionGetSelectedCountry() {
   try {
     const res = await prisma.countries.findMany({
       where: {
-        country_code: "ARM",
+        country_code: "USA",
       },
     });
 

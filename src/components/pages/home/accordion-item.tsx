@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { useDispatch, useSelector } from "react-redux";
-import { setInfo, setRemoveInfo } from "@/redux/info";
+import ItemIndicator from "@/components/common/item-indicator/item-indicator";
+import { useSelector } from "react-redux";
 
 interface IThisProps {
   item: ICountryData[];
@@ -9,26 +9,29 @@ interface IThisProps {
 }
 
 function AccordionItem({ item, index }: IThisProps) {
-  const dispatch = useDispatch();
+  const [openClose, setOpenClose] = useState(false);
   const indicatorCode = useSelector(
     (state: IStateSiteInfo) => state.siteInfo.selectedIndicator,
   );
 
-  const [openClose, setOpenClose] = useState(false);
+  console.log(item);
 
-  function AddNewIndicatorCode(code: string) {
-    dispatch(setInfo(code));
-  }
-
-  function RemoveIndicatorCode(code: string) {
-    dispatch(setRemoveInfo(code));
-  }
+  useEffect(() => {
+    if (indicatorCode.length) {
+      const check = indicatorCode.some((indicator) =>
+        item.some((_i) => _i.indicator_code === indicator),
+      );
+      if (check) {
+        setOpenClose(true);
+      }
+    }
+  }, []);
 
   return (
-    <div className="px-2 border-b border-gray-300 py-2 mb-1">
+    <div className="px-2 border-b border-gray-300 dark:border-gray-700 py-2 mb-1">
       <div
         className={clsx(
-          "flex-jsb-c gap-4 text-[14px] cursor-pointer font-semibold",
+          "flex-jsb-c gap-4 text-[14px] cursor-pointer font-semibold dark:text-white",
           {
             "mb-2": openClose,
           },
@@ -49,28 +52,7 @@ function AccordionItem({ item, index }: IThisProps) {
       <div className="pl-4">
         {openClose &&
           item.map((data, index) => (
-            <div
-              key={`data__${index}`}
-              className="text-[13px] border-b border-gray-200 py-2 flex-jsb-c"
-            >
-              {data.Indicator_name}
-
-              {indicatorCode.includes(data.indicator_code) ? (
-                <b
-                  className="cursor-pointer text-red-600"
-                  onClick={() => RemoveIndicatorCode(data.indicator_code)}
-                >
-                  X
-                </b>
-              ) : (
-                <b
-                  className="cursor-pointer text-blue-600"
-                  onClick={() => AddNewIndicatorCode(data.indicator_code)}
-                >
-                  Add
-                </b>
-              )}
-            </div>
+            <ItemIndicator key={`data__${index}`} data={data} />
           ))}
       </div>
     </div>

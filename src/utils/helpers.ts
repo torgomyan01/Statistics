@@ -37,3 +37,27 @@ export const scoreToColor = (score: number) => {
     return "#0000";
   }
 };
+
+export const createSlug = (title: string) => {
+  if (!title) {
+    return "";
+  }
+
+  // 1. Փոքրացնել տառերը
+  let slug = title.toLowerCase();
+
+  // 2. Փոխարինել բոլոր բացատները և կրկնվող գծերը (հնարավոր է օգտատերն է դրել)
+  // Ոչ-տառային և ոչ-թվային նշանները փոխարինել բացատով (բացառությամբ գծիկների)
+  slug = slug.replace(/[^a-z0-9\s-]/g, "");
+
+  // 3. Բոլոր բացատները փոխարինել գծիկով (dash)
+  slug = slug.replace(/\s+/g, "-");
+
+  // 4. Հեռացնել բոլոր գծիկները (dash) տողի սկզբից և վերջից
+  slug = slug.replace(/^-+|-+$/g, "");
+
+  // 5. Հեռացնել բոլոր կրկնվող գծիկները (եթե ավելի քան մեկ գծիկ է ստացվել)
+  slug = slug.replace(/-{2,}/g, "-");
+
+  return slug;
+};

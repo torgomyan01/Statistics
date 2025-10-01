@@ -18,7 +18,7 @@ export async function ActionSearchIndicator(searchQuery: string) {
       data: res,
       error: "",
     };
-  } catch (e) {
+  } catch {
     return {
       status: "error",
       data: [],
