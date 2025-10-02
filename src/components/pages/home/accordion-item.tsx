@@ -14,8 +14,6 @@ function AccordionItem({ item, index }: IThisProps) {
     (state: IStateSiteInfo) => state.siteInfo.selectedIndicator,
   );
 
-  console.log(item);
-
   useEffect(() => {
     if (indicatorCode.length) {
       const check = indicatorCode.some((indicator) =>
@@ -49,7 +47,7 @@ function AccordionItem({ item, index }: IThisProps) {
         />
       </div>
 
-      <div className="pl-4">
+      <div className="pl-2">
         {openClose &&
           item.map((data, index) => (
             <ItemIndicator key={`data__${index}`} data={data} />

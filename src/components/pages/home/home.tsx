@@ -4,6 +4,7 @@ import { Feature, Geometry } from "geojson";
 import L from "leaflet";
 
 import countriesData from "@/access/custom.geo.json";
+import people_info from "@/access/people_info.json";
 import LeftMenu from "@/components/pages/home/left-menu";
 import RightInfo from "@/components/pages/home/right-info";
 import { useCallback, useEffect, useState } from "react";
@@ -12,6 +13,22 @@ import { useDispatch, useSelector } from "react-redux";
 import SelectCountry from "@/components/pages/home/select-country";
 import { setSelectCountry } from "@/redux/info";
 import { ActionGetAllInfo } from "@/app/actions/industry/get-indicatr-code";
+
+declare interface IStateSiteInfo {
+  siteInfo: {
+    selectedIndicator: string[];
+    selectedCountry: string | null;
+    selectedScoreYear: number;
+  };
+}
+
+declare interface ICountryData {
+  country_name: string;
+  indicator_code: string;
+  object: {
+    [key: string]: string | number;
+  };
+}
 
 interface CountryFeature extends Feature {
   properties: {
@@ -30,6 +47,11 @@ function Home() {
   const data: any = countriesData;
   const { features } = data;
 
+  const worldBounds: L.LatLngBoundsLiteral = [
+    [-90, -180],
+    [90, 180],
+  ];
+
   const allCountry: any = features.map((country: any) => {
     return {
       name: country.properties.name,
@@ -45,41 +67,20 @@ function Home() {
     });
 
     Promise.all(allData).then((res) => {
-      const clearRes = res.map((item) => item.data);
+      const clearRes: any = res.map((item) => item.data);
 
       setIndicators(clearRes);
     });
   }
 
-  // Փոփոխություններ այստեղ չկան, քանի որ դրանք կապված են քարտեզի տվյալների գույների հետ
-  const countryStyle = (feature: CountryFeature) => {
-    return {
-      fillColor: getCountryColor(feature.properties.name),
-      color: "darkblue",
-      weight: 1,
-      opacity: 1,
-      fillOpacity: 0.7,
-    };
-  };
-
   const getCountryColor = useCallback(
     (countryName: string) => {
       if (indicators) {
-        if (indicatorCode.selectedCountry) {
-          if (
-            indicatorCode.selectedCountry.toLowerCase() ===
-            countryName.toLowerCase()
-          ) {
-            return PrintColor(countryName);
-          } else {
-            return "#0000";
-          }
-        }
-
         return PrintColor(countryName);
       }
+      return "#0000";
     },
-    [indicators, indicatorCode.selectedCountry],
+    [indicators],
   );
 
   function PrintColor(countryName: string) {
@@ -103,25 +104,29 @@ function Home() {
     return scoreToColor(count / length);
   }
 
+  const countryStyle = (feature: CountryFeature) => {
+    const isSelected =
+      indicatorCode.selectedCountry &&
+      indicatorCode.selectedCountry.toLowerCase() ===
+        feature.properties.name.toLowerCase();
+
+    return {
+      fillColor: getCountryColor(feature.properties.name),
+
+      color: isSelected ? "blue" : "darkblue",
+      weight: isSelected ? 4 : 1,
+
+      opacity: 1,
+      fillOpacity: 0.7,
+    };
+  };
+
   const onEachCountry = useCallback(
     (country: CountryFeature, layer: L.Layer) => {
       const countryName = country.properties.name;
       layer.bindPopup(countryName);
 
       layer.on({
-        // mouseover: (e: LeafletMouseEvent) => {
-        //   const target = e.target as L.Path;
-        //   target.setStyle({
-        //     color: "darkblue",
-        //   });
-        // },
-        // mouseout: (e: LeafletMouseEvent) => {
-        //   const target = e.target as L.Path;
-        //
-        //   target.setStyle({
-        //     fillColor: FillColor,
-        //   });
-        // },
         click: () => {
           if (indicatorCode.selectedCountry) {
             if (indicatorCode.selectedCountry === countryName) {
@@ -138,6 +143,12 @@ function Home() {
     [],
   );
 
+  const findSelectedInfo: any = people_info.find(
+    (country) => country["Country Code"] == indicatorCode.selectedCountry,
+  );
+
+  console.log(findSelectedInfo);
+
   return (
     <div className="flex-jsb-c">
       <LeftMenu />
@@ -147,13 +158,19 @@ function Home() {
             center={[51.505, -0.09]}
             zoom={3}
             className="w-full h-full"
+            worldCopyJump={true}
+            maxBounds={worldBounds}
+            minZoom={2}
+            maxBoundsViscosity={1.0}
           >
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              noWrap={true}
             />
 
             <GeoJSON
+              key={indicatorCode.selectedCountry}
               data={countriesData as any}
               style={countryStyle}
               onEachFeature={onEachCountry as any}
@@ -168,12 +185,14 @@ function Home() {
                 className="fa-solid fa-xmark absolute top-[-10px] right-[-10px] bg-white dark:bg-gray-800 dark:text-gray-200 w-8 h-8 rounded-full flex-jc-c cursor-pointer"
                 onClick={() => dispatch(setSelectCountry(null))}
               />
+
+              {/*{findSelectedInfo[indicatorCode.selectedScoreYear]}*/}
             </div>
           ) : null}
+
+          <RightInfo />
         </div>
       )}
-
-      <RightInfo />
     </div>
   );
 }

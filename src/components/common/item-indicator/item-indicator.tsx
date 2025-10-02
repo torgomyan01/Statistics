@@ -19,25 +19,26 @@ function ItemIndicator({ data }: IThisProps) {
     dispatch(setRemoveInfo(code));
   }
 
-  return (
-    <div className="text-[13px] border-b border-gray-200 dark:border-gray-700 py-2 flex-jsb-c dark:text-gray-300">
-      {data.Indicator_name}
+  const check = indicatorCode.includes(data.indicator_code);
 
-      {indicatorCode.includes(data.indicator_code) ? (
-        <b
-          className="cursor-pointer text-red-600 dark:text-red-400 min-w-[40px] text-right"
-          onClick={() => RemoveIndicatorCode(data.indicator_code)}
-        >
-          X
-        </b>
-      ) : (
-        <b
-          className="cursor-pointer text-blue-600 dark:text-blue-400 min-w-[40px] text-right"
-          onClick={() => AddNewIndicatorCode(data.indicator_code)}
-        >
-          Add
-        </b>
-      )}
+  return check ? (
+    <div
+      className="text-[13px] border-b border-gray-200 dark:border-gray-700 py-2 flex-jsb-c
+      dark:text-gray-300 cursor-pointer
+      bg-gray-300 font-bold px-2
+      dark:bg-gray-600"
+      onClick={() => RemoveIndicatorCode(data.indicator_code)}
+    >
+      {data.Indicator_name}
+    </div>
+  ) : (
+    <div
+      className="text-[13px] border-b border-gray-200 dark:border-gray-700 py-2 flex-jsb-c
+      dark:text-gray-300 cursor-pointer
+      px-2"
+      onClick={() => AddNewIndicatorCode(data.indicator_code)}
+    >
+      {data.Indicator_name}
     </div>
   );
 }

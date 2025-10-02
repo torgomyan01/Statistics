@@ -23,3 +23,13 @@ $green: #1E4A2F;
 ::-webkit-scrollbar-thumb:hover {
   background-color: #949494;
 }
+
+
+.slider-right{
+  [data-slot="thumb"]{
+    width: 5px;
+    border: none;
+    outline: none;
+    background: #fff;
+  }
+}
