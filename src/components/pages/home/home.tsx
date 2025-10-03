@@ -13,6 +13,7 @@ import { useDispatch, useSelector } from "react-redux";
 import SelectCountry from "@/components/pages/home/select-country";
 import { setSelectCountry } from "@/redux/info";
 import { ActionGetAllInfo } from "@/app/actions/industry/get-indicatr-code";
+import PrintInfoCountryDeff from "@/components/pages/home/print-info-country-deff";
 
 declare interface IStateSiteInfo {
   siteInfo: {
@@ -121,13 +122,25 @@ function Home() {
     };
   };
 
+  const [selectedIsoCode, setSelectedIsoCode] = useState("");
+
   const onEachCountry = useCallback(
     (country: CountryFeature, layer: L.Layer) => {
       const countryName = country.properties.name;
+      const countryIco = country.properties.iso_a3_eh;
+
       layer.bindPopup(countryName);
 
       layer.on({
+        // mouseover: () => {
+        //   setSelectedIsoCodeTwo(countryIco);
+        // },
+        // mouseout: () => {
+        //   setSelectedIsoCodeTwo("");
+        // },
         click: () => {
+          setSelectedIsoCode(countryIco);
+
           if (indicatorCode.selectedCountry) {
             if (indicatorCode.selectedCountry === countryName) {
               dispatch(setSelectCountry(null));
@@ -143,11 +156,9 @@ function Home() {
     [],
   );
 
-  const findSelectedInfo: any = people_info.find(
-    (country) => country["Country Code"] == indicatorCode.selectedCountry,
-  );
-
-  console.log(findSelectedInfo);
+  const findSelectedInfo: any = people_info
+    .filter((country) => country["Country Code"] == selectedIsoCode)
+    .slice(0, 2);
 
   return (
     <div className="flex-jsb-c">
@@ -179,17 +190,30 @@ function Home() {
           <SelectCountry allCountry={allCountry} />
 
           {indicatorCode.selectedCountry ? (
-            <div className="px-6 py-4 bg-white dark:bg-gray-700 dark:text-white absolute top-4 right-4 z-[1000] rounded-lg cursor-default">
-              {indicatorCode.selectedCountry}
+            <div className="p-4 bg-white dark:bg-gray-800 dark:text-white absolute top-4 right-4 z-[1000] rounded-xl cursor-default w-[40vw] shadow-2xl transition-colors duration-500 border border-gray-200 dark:border-gray-700">
               <i
-                className="fa-solid fa-xmark absolute top-[-10px] right-[-10px] bg-white dark:bg-gray-800 dark:text-gray-200 w-8 h-8 rounded-full flex-jc-c cursor-pointer"
+                className="fa-solid fa-xmark absolute top-[-10px] right-[-10px] w-8 h-8 rounded-full flex justify-center items-center cursor-pointer
+               bg-white dark:bg-gray-900 text-red-600 dark:text-red-400 shadow-xl hover:shadow-2xl transition-all"
                 onClick={() => dispatch(setSelectCountry(null))}
               />
 
-              {/*{findSelectedInfo[indicatorCode.selectedScoreYear]}*/}
+              <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden max-h-[80dvh]">
+                <h3 className="text-xl font-extrabold mb-4 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                  {indicatorCode.selectedCountry}
+                </h3>
+
+                <div className="space-y-4 flex-jsb-s gap-4 pr-2">
+                  {findSelectedInfo.map((item: any, index: number) => (
+                    <PrintInfoCountryDeff
+                      key={`PrintInfoCountryDeff__${index}`}
+                      item={item}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           ) : null}
-
           <RightInfo />
         </div>
       )}

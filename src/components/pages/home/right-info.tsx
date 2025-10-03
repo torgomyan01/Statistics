@@ -20,6 +20,10 @@ function RightInfo() {
     [dispatch],
   );
 
+  // const findSelectedInfo: any = people_info.find(
+  //   (country) => country["Country Code"] == indicatorCode.selectedCountry,
+  // );
+
   return (
     <div className="w-full bg-white dark:bg-gray-800 absolute right-0 bottom-0 z-[1000] px-4 py-2 pb-3">
       <div className="w-full slider-right">
