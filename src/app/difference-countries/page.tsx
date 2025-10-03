@@ -51,6 +51,8 @@ function Page() {
         .reverse()
     : [];
 
+  const formatter = new Intl.NumberFormat();
+
   return (
     <div
       className={`min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-500 font-inter`}
@@ -145,10 +147,14 @@ function Page() {
                     <TableRow key={key}>
                       <TableCell className="font-semibold">{key}</TableCell>
                       <TableCell>
-                        {countryOneInfo.length ? countryOneInfo[0][key] : "N/A"}
+                        {countryOneInfo.length
+                          ? countryOneInfo[0][key].toLocaleString()
+                          : "N/A"}
                       </TableCell>
                       <TableCell>
-                        {countryTwoInfo.length ? countryTwoInfo[0][key] : "N/A"}
+                        {countryTwoInfo.length
+                          ? countryTwoInfo[0][key].toLocaleString()
+                          : "N/A"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -187,10 +193,14 @@ function Page() {
                     <TableRow key={key}>
                       <TableCell className="font-semibold">{key}</TableCell>
                       <TableCell>
-                        {countryOneInfo.length ? countryOneInfo[1][key] : "N/A"}
+                        {countryOneInfo.length
+                          ? countryOneInfo[1][key].toLocaleString()
+                          : "N/A"}
                       </TableCell>
                       <TableCell>
-                        {countryTwoInfo.length ? countryTwoInfo[1][key] : "N/A"}
+                        {countryTwoInfo.length
+                          ? countryTwoInfo[1][key].toLocaleString()
+                          : "N/A"}
                       </TableCell>
                     </TableRow>
                   ))}
