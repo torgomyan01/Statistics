@@ -2,11 +2,9 @@ import { Input } from "@heroui/input";
 import AccordionItem from "@/components/pages/home/accordion-item";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActionGetSelectedCountry } from "@/app/actions/industry/get";
-import { ActionSearchIndicator } from "@/app/actions/industry/search";
 import { Spinner } from "@heroui/react";
-import ItemIndicator from "@/components/common/item-indicator/item-indicator";
 import { useDispatch, useSelector } from "react-redux";
-import { setClearAll, setInfo } from "@/redux/info";
+import { setAllIndicators, setClearAll, setInfo } from "@/redux/info";
 import clsx from "clsx";
 import { useParams } from "next/navigation";
 
@@ -31,29 +29,38 @@ function LeftMenu() {
     (state: IStateSiteInfo) => state.siteInfo.selectedIndicator,
   );
 
-  const [datasets, setDatasets] = useState<ICountryData[] | null>(null);
+  const datasets = useSelector(
+    (state: IStateSiteInfo) => state.siteInfo.allIndicators,
+  );
+  const [indicators, setIndicators] = useState<ICountryData[] | null>(null);
+
+  useEffect(() => {
+    setIndicators(datasets);
+  }, [datasets]);
 
   useEffect(() => {
     const getAllGroup = [
-      ...new Set(datasets?.map((data) => data.object.group)),
+      ...new Set(indicators?.map((data) => data.object.group)),
     ];
 
     const CreateGroup = getAllGroup.map((group) =>
-      datasets?.filter((data) => data.object.group === group),
+      indicators?.filter((data) => data.object.group === group),
     );
 
     if (CreateGroup) {
       setFilteredRes(CreateGroup);
     }
-  }, [datasets]);
+  }, [indicators]);
 
   useEffect(() => {
     ActionGetSelectedCountry().then(({ data }) => {
-      setDatasets(data as ICountryData[]);
+      dispatch(setAllIndicators(data as ICountryData[]));
     });
   }, []);
 
-  const [searchResult, setSearchResult] = useState<ICountryData[] | null>(null);
+  const [searchResult, setSearchResult] = useState<
+    (ICountryData[] | undefined)[] | null
+  >(null);
   const [inputSearch, setInputSearch] = useState<string>("");
 
   const debounceTimerRef: any = useRef(null);
@@ -68,19 +75,33 @@ function LeftMenu() {
     debounceTimerRef.current = setTimeout(() => {
       if (value) {
         setSearchResult(null);
-        ActionSearchIndicator(value).then(({ data }) => {
-          const res: ICountryData[] = [];
 
-          data.forEach((indicator: ICountryData) => {
-            if (
-              !res.some((_d) => _d.indicator_code === indicator.indicator_code)
-            ) {
-              res.push(indicator);
-            }
-          });
+        const search = datasets?.filter((_indicator) =>
+          _indicator.Indicator_name.toLowerCase().includes(value.toLowerCase()),
+        );
 
-          setSearchResult(res);
-        });
+        const getAllGroup = [
+          ...new Set(search?.map((data) => data.object.group)),
+        ];
+
+        const CreateGroup = getAllGroup.map((group) =>
+          search?.filter((data) => data.object.group === group),
+        );
+
+        setSearchResult(CreateGroup);
+        // ActionSearchIndicator(value).then(({ data }) => {
+        //   const res: ICountryData[] = [];
+        //
+        //   data.forEach((indicator: ICountryData) => {
+        //     if (
+        //       !res.some((_d) => _d.indicator_code === indicator.indicator_code)
+        //     ) {
+        //       res.push(indicator);
+        //     }
+        //   });
+        //
+        //   setSearchResult(res);
+        // });
       } else {
         setSearchResult(null);
       }
@@ -92,13 +113,7 @@ function LeftMenu() {
   }
 
   return (
-    <div className="w-[400px] h-[100dvh] border-r border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
-      <div className="w-full border-b p-4 flex-js-c border-gray-200 dark:border-gray-700">
-        <h1 className="uppercase font-bold text-[20px] text-blue-900 dark:text-blue-400">
-          Enhance Website
-        </h1>
-      </div>
-
+    <div className="min-w-[400px] w-[400px] h-full border-r border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 relative z-[1000]">
       <div className="px-4 pt-4 h-full">
         <div
           className={clsx(
@@ -111,7 +126,7 @@ function LeftMenu() {
           <Input
             label="Search Datasets"
             type="text"
-            className="w-full h-10"
+            className="w-full h-12"
             radius="sm"
             value={inputSearch}
             onValueChange={handleChangeInput}
@@ -138,10 +153,17 @@ function LeftMenu() {
 
         {inputSearch ? (
           searchResult ? (
-            <div className="w-full h-[calc(100%-180px)] overflow-y-auto pr-2">
-              {searchResult.map((data, index) => (
-                <ItemIndicator key={`data__${index}`} data={data} />
-              ))}
+            <div className="w-full h-[calc(100%-120px)] overflow-y-auto pr-2">
+              {searchResult.map(
+                (data, index) =>
+                  data && (
+                    <AccordionItem
+                      item={data}
+                      key={`accardion-code-${index}`}
+                      index={index}
+                    />
+                  ),
+              )}
             </div>
           ) : (
             <div className="w-full h-[300px] flex-jc-c">
@@ -151,7 +173,7 @@ function LeftMenu() {
         ) : (
           <>
             {filteredRes ? (
-              <div className="w-full h-[calc(100%-180px)] overflow-y-auto">
+              <div className="w-full h-[calc(100%-120px)] overflow-y-auto">
                 {filteredRes.map(
                   (data, index) =>
                     data && (

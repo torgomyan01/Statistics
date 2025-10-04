@@ -20,25 +20,33 @@ function RightInfo() {
     [dispatch],
   );
 
-  // const findSelectedInfo: any = people_info.find(
-  //   (country) => country["Country Code"] == indicatorCode.selectedCountry,
-  // );
-
   return (
-    <div className="w-full bg-white dark:bg-gray-800 absolute right-0 bottom-0 z-[1000] px-4 py-2 pb-3">
-      <div className="w-full slider-right">
+    <div className="w-[50%] absolute right-0 left-0 m-auto bottom-4 z-[1000] px-4 py-4">
+      <div className="w-full flex-jsb-c relative top-6 z-[-1]">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div key={`solid__${i}`} className="w-[1px] h-[30px] bg-black/20" />
+        ))}
+      </div>
+      <div className="w-full slider-right relative z-[1000] mb-4">
         <Slider
           className="w-full"
           color="foreground"
-          defaultValue={2020}
-          label="Select Year"
-          maxValue={2020}
+          defaultValue={2024}
+          maxValue={2024}
           minValue={1960}
           size="sm"
           radius="none"
           step={1}
           onChange={handleSliderChange}
+          classNames={{
+            track: "bg-gray-300",
+            filler: "bg-gray-300",
+          }}
         />
+      </div>
+      <div className="w-[calc(100%+40px)] -ml-[20px] flex-jsb-c mb-[-10px]">
+        <span>1960</span>
+        <span>2024</span>
       </div>
     </div>
   );

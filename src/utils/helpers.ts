@@ -11,31 +11,60 @@ export const RandomKey = (length = 5) => {
   return result;
 };
 
-export const scoreToColor = (score: number) => {
-  if (score) {
-    score = Math.max(0, Math.min(100, score));
+// export const scoreToColor = (score: number) => {
+//   if (score) {
+//     score = Math.max(0, Math.min(100, score));
+//
+//     let r,
+//       g,
+//       b = 0;
+//
+//     if (score <= 50) {
+//       g = Math.round(255 * (score / 50));
+//       r = 255;
+//     } else {
+//       g = 255;
+//       r = Math.round(255 * (1 - (score - 50) / 50));
+//     }
+//
+//     const toHex = (c: any) => {
+//       const hex = c.toString(16);
+//       return hex.length === 1 ? `0${hex}` : hex;
+//     };
+//
+//     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+//   } else {
+//     return "#0000";
+//   }
+// };
 
-    let r,
-      g,
-      b = 0;
-
-    if (score <= 50) {
-      g = Math.round(255 * (score / 50));
-      r = 255;
-    } else {
-      g = 255;
-      r = Math.round(255 * (1 - (score - 50) / 50));
-    }
-
-    const toHex = (c: any) => {
-      const hex = c.toString(16);
-      return hex.length === 1 ? `0${hex}` : hex;
-    };
-
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-  } else {
-    return "#0000";
+export const scoreToColor = (score: number | null | undefined): string => {
+  if (typeof score !== "number" || isNaN(score)) {
+    return "#00000000";
   }
+
+  const clampedScore = Math.max(0, Math.min(100, score));
+
+  let r = 0;
+  let g = 0;
+  const b = 0;
+
+  if (clampedScore <= 50) {
+    r = 255;
+    g = Math.round(255 * (clampedScore / 50));
+  } else {
+    g = 255;
+    r = Math.round(255 * (1 - (clampedScore - 50) / 50));
+  }
+
+  const alpha = Math.round(255 * (clampedScore / 100));
+
+  const toHex = (c: number): string => {
+    const hex = c.toString(16);
+    return hex.length === 1 ? `0${hex}` : hex;
+  };
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}${toHex(alpha)}`;
 };
 
 export const createSlug = (title: string) => {
@@ -43,21 +72,24 @@ export const createSlug = (title: string) => {
     return "";
   }
 
-  // 1. Փոքրացնել տառերը
   let slug = title.toLowerCase();
 
-  // 2. Փոխարինել բոլոր բացատները և կրկնվող գծերը (հնարավոր է օգտատերն է դրել)
-  // Ոչ-տառային և ոչ-թվային նշանները փոխարինել բացատով (բացառությամբ գծիկների)
   slug = slug.replace(/[^a-z0-9\s-]/g, "");
 
-  // 3. Բոլոր բացատները փոխարինել գծիկով (dash)
   slug = slug.replace(/\s+/g, "-");
 
-  // 4. Հեռացնել բոլոր գծիկները (dash) տողի սկզբից և վերջից
   slug = slug.replace(/^-+|-+$/g, "");
 
-  // 5. Հեռացնել բոլոր կրկնվող գծիկները (եթե ավելի քան մեկ գծիկ է ստացվել)
   slug = slug.replace(/-{2,}/g, "-");
 
   return slug;
+};
+
+export const formatLargeNumber = (number: number) => {
+  const formatter = new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 2,
+  });
+
+  return formatter.format(number);
 };

@@ -9,9 +9,11 @@ declare interface ICountryData {
 
 declare interface IStateSiteInfo {
   siteInfo: {
+    allIndicators: ICountryData[] | null;
     selectedIndicator: string[];
+    selectedCountry: string | null;
     selectedScoreYear: number;
-    selectedCountry: string;
+    selectedCountryIso: string | null;
   };
 }
 
