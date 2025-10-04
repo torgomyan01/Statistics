@@ -83,8 +83,6 @@ function LeftMenu() {
             ),
           );
 
-          console.log(search);
-
           const getAllGroup = [
             ...new Set(search?.map((data) => data.object.group)),
           ];
