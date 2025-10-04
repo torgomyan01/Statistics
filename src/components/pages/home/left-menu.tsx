@@ -65,48 +65,42 @@ function LeftMenu() {
 
   const debounceTimerRef: any = useRef(null);
 
-  const handleChangeInput = useCallback((value: any) => {
-    setInputSearch(value);
+  const handleChangeInput = useCallback(
+    (value: any) => {
+      setInputSearch(value);
 
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      if (value) {
-        setSearchResult(null);
-
-        const search = datasets?.filter((_indicator) =>
-          _indicator.Indicator_name.toLowerCase().includes(value.toLowerCase()),
-        );
-
-        const getAllGroup = [
-          ...new Set(search?.map((data) => data.object.group)),
-        ];
-
-        const CreateGroup = getAllGroup.map((group) =>
-          search?.filter((data) => data.object.group === group),
-        );
-
-        setSearchResult(CreateGroup);
-        // ActionSearchIndicator(value).then(({ data }) => {
-        //   const res: ICountryData[] = [];
-        //
-        //   data.forEach((indicator: ICountryData) => {
-        //     if (
-        //       !res.some((_d) => _d.indicator_code === indicator.indicator_code)
-        //     ) {
-        //       res.push(indicator);
-        //     }
-        //   });
-        //
-        //   setSearchResult(res);
-        // });
-      } else {
-        setSearchResult(null);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
-    }, 700);
-  }, []);
+
+      debounceTimerRef.current = setTimeout(() => {
+        if (value) {
+          setSearchResult(null);
+
+          const search = datasets?.filter((_indicator) =>
+            _indicator.Indicator_name.toLowerCase().includes(
+              value.toLowerCase(),
+            ),
+          );
+
+          console.log(search);
+
+          const getAllGroup = [
+            ...new Set(search?.map((data) => data.object.group)),
+          ];
+
+          const CreateGroup = getAllGroup.map((group) =>
+            search?.filter((data) => data.object.group === group),
+          );
+
+          setSearchResult(CreateGroup);
+        } else {
+          setSearchResult(null);
+        }
+      }, 700);
+    },
+    [datasets],
+  );
 
   function ClearAll() {
     dispatch(setClearAll());
