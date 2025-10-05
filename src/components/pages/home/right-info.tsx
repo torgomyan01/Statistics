@@ -2,8 +2,13 @@ import { Slider } from "@heroui/react";
 import { useDispatch } from "react-redux";
 import { useCallback, useRef } from "react";
 import { setYear } from "@/redux/info";
+import clsx from "clsx";
 
-function RightInfo() {
+interface IThisProps {
+  absolute?: boolean;
+}
+
+function RightInfo({ absolute = true }: IThisProps) {
   const dispatch = useDispatch();
   const debounceTimerRef: any = useRef(null);
 
@@ -21,7 +26,12 @@ function RightInfo() {
   );
 
   return (
-    <div className="w-[50%] absolute right-0 left-0 m-auto bottom-4 z-[1000] px-4 py-4">
+    <div
+      className={clsx("w-full md:w-[50%] m-auto z-[1000] px-4 py-4", {
+        "absolute right-0 left-0 bottom-4": absolute,
+        relative: !absolute,
+      })}
+    >
       <div className="w-full flex-jsb-c relative top-6 z-[-1]">
         {Array.from({ length: 20 }).map((_, i) => (
           <div key={`solid__${i}`} className="w-[1px] h-[30px] bg-black/20" />

@@ -21,7 +21,7 @@ function SelectCountry({ allCountry }: IThisProps) {
     <div className="absolute left-[50px] top-[12px] z-[1000] flex-js-c gap-2">
       <Autocomplete
         className="max-w-xs h-[]"
-        label="Select country"
+        label="Find Country"
         radius="sm"
         selectedKey={indicatorCode}
         onSelectionChange={OnChangeCountry}

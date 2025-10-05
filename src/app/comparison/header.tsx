@@ -18,14 +18,21 @@ const menu = [
   },
 ];
 
-function Header() {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+}
+
+function Header({ onToggleSidebar }: HeaderProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-xl sticky top-0 z-20 transition-colors duration-500 border-b border-indigo-500/30">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-row justify-between items-center space-y-4 sm:space-y-0">
-        <Link href={SITE_URL.HOME} className="flex-js-c gap-2 min-w-[370px]">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-row justify-between items-center">
+        <Link
+          href={SITE_URL.HOME}
+          className="flex-js-c gap-2 md:min-w-[370px] mr-6"
+        >
           <Image
             src="/images/logo.svg"
             alt="logo site"
@@ -43,18 +50,30 @@ function Header() {
             <Link
               key={menu.name}
               href={menu.url}
-              className={clsx("text-gray-900 dark:text-white", {
-                "text-indigo-500": menu.url === pathname,
-              })}
+              className={clsx(
+                "text-[14px] sm:text-[16px] text-gray-900 dark:text-white",
+                {
+                  "text-indigo-500": menu.url === pathname,
+                },
+              )}
             >
               {menu.name}
             </Link>
           ))}
         </div>
 
+        {/* Burger only on small screens */}
+        <button
+          className="md:hidden sm:mr-2 p-2 rounded-lg bg-indigo-500 min-w-10 text-white hover:bg-indigo-600 transition"
+          aria-label="Toggle Menu"
+          onClick={onToggleSidebar}
+        >
+          <i className="fa-solid fa-bars"></i>
+        </button>
+
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="p-3 rounded-full bg-indigo-500 dark:bg-indigo-700 text-white dark:text-yellow-300
+          className="hidden sm:block p-3 rounded-full bg-indigo-500 dark:bg-indigo-700 text-white dark:text-yellow-300
                      shadow-lg shadow-indigo-500/50 dark:shadow-indigo-700/50 hover:bg-indigo-600 dark:hover:bg-indigo-800 transition-all duration-300 transform hover:scale-105" // HeroUI style
           aria-label="Toggle Dark Mode"
         >

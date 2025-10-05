@@ -1,6 +1,12 @@
 import { Input } from "@heroui/input";
 import AccordionItem from "@/components/pages/home/accordion-item";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ActionGetSelectedCountry } from "@/app/actions/industry/get";
 import { Spinner } from "@heroui/react";
 import { useDispatch, useSelector } from "react-redux";
@@ -8,7 +14,12 @@ import { setAllIndicators, setClearAll, setInfo } from "@/redux/info";
 import clsx from "clsx";
 import { useParams } from "next/navigation";
 
-function LeftMenu() {
+interface LeftMenuProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
   const dispatch = useDispatch();
   const { indicator_code }: { indicator_code: string } = useParams();
 
@@ -104,9 +115,20 @@ function LeftMenu() {
     dispatch(setClearAll());
   }
 
-  return (
-    <div className="min-w-[400px] w-[400px] h-full border-r border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 relative z-[1000]">
-      <div className="px-4 pt-4 h-full">
+  const isDataLoading =
+    !datasets || indicators === null || filteredRes === null;
+
+  const loadingContent = (
+    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 relative z-[1000] pt-[200px]">
+      <div className="w-full h-full flex-jc-c">
+        <Spinner color="secondary" className="dark:text-white" />
+      </div>
+    </div>
+  );
+
+  const content = (
+    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative z-[1000]">
+      <div className="px-4 pt-4 h-full overflow-y-auto">
         <div
           className={clsx(
             "flex w-full flex-wrap md:flex-nowrap gap-4 mb-2 relative",
@@ -116,7 +138,7 @@ function LeftMenu() {
           )}
         >
           <Input
-            label="Search Datasets"
+            label="Find Indicator"
             type="text"
             className="w-full h-12"
             radius="sm"
@@ -188,6 +210,28 @@ function LeftMenu() {
       </div>
     </div>
   );
-}
+
+  // Desktop renders content directly; mobile renders as drawer overlay
+  const isMobileDrawer = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(max-width: 767px)").matches,
+    [],
+  );
+
+  if (!isMobileDrawer) {
+    return (isDataLoading ? loadingContent : content) as any;
+  }
+
+  return isOpen ? (
+    <div className="fixed inset-0 z-[2000] h-full">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute left-0 top-0 h-full w-[80%]">
+        {isDataLoading ? loadingContent : content}
+      </div>
+    </div>
+  ) : null;
+};
 
 export default LeftMenu;

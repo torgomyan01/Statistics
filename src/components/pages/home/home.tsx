@@ -6,13 +6,14 @@ import L from "leaflet";
 import countriesData from "@/access/custom.geo.json";
 import people_info from "@/access/people_info.json";
 import RightInfo from "@/components/pages/home/right-info";
-import { useCallback, useEffect, useState } from "react";
-import { formatLargeNumber, scoreToColor } from "@/utils/helpers";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatLargeNumber, scoreToColor, truncateText } from "@/utils/helpers";
 import { useDispatch, useSelector } from "react-redux";
 import SelectCountry from "@/components/pages/home/select-country";
 import { setSelectCountry, setSelectCountryIso } from "@/redux/info";
 import { ActionGetAllInfo } from "@/app/actions/industry/get-indicatr-code";
 import MainTemplate from "@/components/common/main-template/main-template";
+import { Tooltip } from "@heroui/react";
 
 declare interface ICountryData {
   country_name: string;
@@ -75,25 +76,33 @@ function Home() {
     [indicators],
   );
 
-  function PrintColor(countryName: string) {
-    const findCounty: any = indicators?.map((item) =>
-      item.find((country) => country.country_name.includes(countryName)),
-    );
-
-    let count = 0;
-    let length = 0;
-
-    findCounty?.forEach((item: any) => {
-      const getArithmeticMean =
-        item?.object[`${indicatorCode.selectedScoreYear}_score`];
-
-      if (getArithmeticMean) {
-        count += +getArithmeticMean;
-        length++;
-      }
+  const avgScoreByCountryName = useMemo(() => {
+    if (!indicators) {
+      return new Map<string, number>();
+    }
+    const map = new Map<string, number>();
+    const counts = new Map<string, number>();
+    indicators.forEach((indicatorList) => {
+      indicatorList.forEach((country) => {
+        const score =
+          country.object?.[`${indicatorCode.selectedScoreYear}_score`];
+        if (score !== undefined && score !== "" && score !== null) {
+          const key = country.country_name;
+          map.set(key, (map.get(key) || 0) + +score);
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+      });
     });
+    counts.forEach((len, key) => {
+      const sum = map.get(key) || 0;
+      map.set(key, len ? sum / len : 0);
+    });
+    return map;
+  }, [indicators, indicatorCode.selectedScoreYear]);
 
-    return scoreToColor(count / length);
+  function PrintColor(countryName: string) {
+    const avg = avgScoreByCountryName.get(countryName) || 0;
+    return scoreToColor(avg);
   }
 
   const countryStyle = (feature: CountryFeature) => {
@@ -106,12 +115,16 @@ function Home() {
       fillColor: getCountryColor(feature.properties.name),
 
       color: isSelected ? "black" : "darkblue",
-      weight: isSelected ? 4 : 1,
+      weight: isSelected ? 2 : 1,
 
       opacity: 1,
       fillOpacity: 0.7,
     };
   };
+
+  const [selectedCountryHover, setSelectedCountryHover] = useState<string>("");
+  const [selectedCountryCodeHover, setSelectedCountryCodeHover] =
+    useState<string>("");
 
   const onEachCountry = useCallback(
     (country: CountryFeature, layer: L.Layer) => {
@@ -121,6 +134,11 @@ function Home() {
       layer.bindPopup(countryName);
 
       layer.on({
+        mouseover: () => {
+          setSelectedCountryCodeHover(countryIco);
+          setSelectedCountryHover(countryName);
+        },
+
         click: () => {
           dispatch(setSelectCountryIso(countryIco));
 
@@ -149,11 +167,11 @@ function Home() {
     );
 
     const findMaxScore =
-      findActiveIndicators?.map(
-        (_ind) => _ind.object[`${indicatorCode.selectedScoreYear}_score`],
+      findActiveIndicators?.sort(
+        (_ind, _indB) =>
+          _ind.object[`${indicatorCode.selectedScoreYear}_score`] -
+          _indB.object[`${indicatorCode.selectedScoreYear}_score`],
       ) || [];
-
-    const findMax = Math.max(...findMaxScore);
 
     const calcOnlyActiveInd = findActiveIndicators?.filter(
       (_ind) => _ind.object[`${indicatorCode.selectedScoreYear}_score`] !== "",
@@ -170,23 +188,76 @@ function Home() {
     return {
       activeIndicator: `${calcOnlyActiveInd?.length} / ${indicatorCode.selectedIndicator.length}`,
       activeScore: (activeSc / activeScoreLength).toFixed(0) || 0,
-      maxScore: findMax,
+      maxScore: findMaxScore[0],
     };
   }
 
-  const Population: any = people_info.find(
-    (country) =>
-      country["Country Code"] == indicatorCode.selectedCountryIso &&
-      country["Indicator Name"] === "Population, total",
+  const populationByCode = useMemo(() => {
+    const map: Record<string, any> = {};
+    (people_info as any[]).forEach((row: any) => {
+      if (row["Indicator Name"] === "Population, total") {
+        map[row["Country Code"]] = row;
+      }
+    });
+    return map;
+  }, []);
+
+  const areaByCode = useMemo(() => {
+    const map: Record<string, any> = {};
+    (people_info as any[]).forEach((row: any) => {
+      if (row["Indicator Name"] === "Surface area (sq. km)") {
+        map[row["Country Code"]] = row;
+      }
+    });
+    return map;
+  }, []);
+
+  const selectedIsoCode = indicatorCode.selectedCountryIso || "";
+
+  const Population: any = useMemo(
+    () => populationByCode[selectedIsoCode] || {},
+    [populationByCode, selectedIsoCode],
   );
 
-  const area: any = people_info.find(
-    (country) =>
-      country["Country Code"] == indicatorCode.selectedCountryIso &&
-      country["Indicator Name"] === "Surface area (sq. km)",
+  const area: any = useMemo(
+    () => areaByCode[selectedIsoCode] || {},
+    [areaByCode, selectedIsoCode],
   );
 
   const getCalcScore = CalcActiveIndicator();
+
+  // removed debug logs
+
+  const hoverStats = useMemo(() => {
+    if (!indicators || !selectedCountryHover) {
+      return {
+        activeIndicator: `0 / ${indicatorCode.selectedIndicator.length}`,
+        activeScore: "0",
+      };
+    }
+    let sumScores = 0;
+    let countActive = 0;
+    indicators.forEach((indicatorList) => {
+      const found = indicatorList.find((c) =>
+        c.country_name.includes(selectedCountryHover),
+      );
+      const score = found?.object?.[`${indicatorCode.selectedScoreYear}_score`];
+      if (score !== undefined && score !== "" && score !== null) {
+        sumScores += +score;
+        countActive += 1;
+      }
+    });
+    const avg = countActive ? (sumScores / countActive).toFixed(0) : "0";
+    return {
+      activeIndicator: `${countActive} / ${indicatorCode.selectedIndicator.length}`,
+      activeScore: avg,
+    };
+  }, [
+    indicators,
+    selectedCountryHover,
+    indicatorCode.selectedIndicator.length,
+    indicatorCode.selectedScoreYear,
+  ]);
 
   return (
     <MainTemplate>
@@ -208,7 +279,7 @@ function Home() {
             />
 
             <GeoJSON
-              key={indicatorCode.selectedCountry}
+              key={`${indicatorCode.selectedCountry}-${indicatorCode.selectedScoreYear}-${indicatorCode.selectedIndicator.join(",")}`}
               data={countriesData as any}
               style={countryStyle}
               onEachFeature={onEachCountry as any}
@@ -249,10 +320,48 @@ function Home() {
                 <li className="text-[14px]">
                   <b>Average score:</b> {getCalcScore.activeScore}
                 </li>
-                <li className="text-[14px]">
-                  <b>Best:</b> GDP - {getCalcScore.maxScore.toFixed()}
+                <li className="text-[14px] flex-js-c gap-2">
+                  <b>Best:</b>{" "}
+                  <Tooltip content={getCalcScore.maxScore?.Indicator_name}>
+                    {truncateText(getCalcScore.maxScore?.Indicator_name, 23)}
+                  </Tooltip>
                 </li>
               </ul>
+
+              {selectedCountryCodeHover && (
+                <ul className="mt-4">
+                  <li className="text-[14px]">
+                    <b>Hover Country:</b> {selectedCountryHover}
+                  </li>
+                  <li className="text-[14px]">
+                    <b>Selected Year:</b> {indicatorCode.selectedScoreYear}
+                  </li>
+                  <li className="text-[14px]">
+                    <b>Area:</b>{" "}
+                    {formatLargeNumber(
+                      (areaByCode[selectedCountryCodeHover] || {})[
+                        indicatorCode.selectedScoreYear
+                      ] || 0,
+                    )}{" "}
+                    sq km
+                  </li>
+                  <li className="text-[14px]">
+                    <b>Population:</b>{" "}
+                    {formatLargeNumber(
+                      (populationByCode[selectedCountryCodeHover] || {})[
+                        indicatorCode.selectedScoreYear
+                      ] || 0,
+                    )}
+                  </li>
+                  <li className="text-[14px]">
+                    <b>Number of indicators with data:</b>{" "}
+                    {hoverStats.activeIndicator}
+                  </li>
+                  <li className="text-[14px]">
+                    <b>Average score:</b> {hoverStats.activeScore}
+                  </li>
+                </ul>
+              )}
             </div>
           ) : null}
           <RightInfo />
