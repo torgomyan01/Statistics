@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActionGetAllCountry } from "@/app/actions/counrty/get";
 import { Autocomplete, AutocompleteItem, Avatar } from "@heroui/react";
 import {
@@ -80,7 +80,8 @@ function Page() {
     ? countryNameByIso3.get(isoTwo) || "Country 2"
     : "Country 2";
 
-  // Fetch indicator datasets for selected indicators
+  // Indicator cache and progressive loading per code
+  const indicatorCacheRef = useRef<Map<string, ICountryData[]>>(new Map());
   const [indicatorDatasets, setIndicatorDatasets] = useState<
     Record<string, ICountryData[]>
   >({});
@@ -92,34 +93,59 @@ function Page() {
       setIsLoading(false);
       return;
     }
+
+    // Seed from cache immediately for instant rendering
+    const seeded: Record<string, ICountryData[]> = {} as any;
+    selectedIndicator.forEach((code) => {
+      const cached = indicatorCacheRef.current.get(code);
+      if (cached) {
+        seeded[code] = cached;
+      }
+    });
+    if (Object.keys(seeded).length) {
+      setIndicatorDatasets((prev) => ({ ...prev, ...seeded }));
+    }
+
+    // Fetch only missing indicators, update state incrementally
+    const missing = selectedIndicator.filter(
+      (code) => !indicatorCacheRef.current.has(code),
+    );
+
+    if (!missing.length) {
+      setIsLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
     setIsLoading(true);
-    Promise.all(selectedIndicator.map((code) => ActionGetAllInfo(code))).then(
-      (resArr) => {
+    let remaining = missing.length;
+    missing.forEach((code) => {
+      ActionGetAllInfo(code).then((resp) => {
         if (!isMounted) {
           return;
         }
-        const next: Record<string, ICountryData[]> = {} as any;
-        resArr.forEach((resp, idx) => {
-          const code = selectedIndicator[idx];
-          next[code] = resp.data as ICountryData[];
-        });
+        const data = (resp.data || []) as ICountryData[];
+        indicatorCacheRef.current.set(code, data);
+        setIndicatorDatasets((prev) => ({ ...prev, [code]: data }));
+        remaining -= 1;
+        if (remaining <= 0) {
+          setIsLoading(false);
+        }
+      });
+    });
 
-        setIndicatorDatasets(next);
-        setIsLoading(false);
-      },
-    );
     return () => {
       isMounted = false;
     };
   }, [selectedIndicator]);
 
-  // Trigger lightweight loading when countries/year change to indicate recalculation
+  // Trigger lightweight recalculation signal without blocking UI
   useEffect(() => {
     if (!isoOne || !isoTwo) {
       return;
     }
-    setIsLoading(true);
-    const id = requestAnimationFrame(() => setIsLoading(false));
+    const id = requestAnimationFrame(() => {});
     return () => cancelAnimationFrame(id);
   }, [isoOne, isoTwo, selectedScoreYear, indicatorDatasets]);
 
@@ -195,8 +221,8 @@ function Page() {
       const one = list.find((x) => x.country_code === isoOne);
       const two = list.find((x) => x.country_code === isoTwo);
       const metricName = one?.Indicator_name || two?.Indicator_name || code;
-      const v1 = r1 !== null ? `${r1}/${countWithRank}` : `-/${countWithRank}`;
-      const v2 = r2 !== null ? `${r2}/${countWithRank}` : `-/${countWithRank}`;
+      const v1 = r1 !== null ? `${r1}/${countWithRank}` : `/${countWithRank}`;
+      const v2 = r2 !== null ? `${r2}/${countWithRank}` : `/${countWithRank}`;
       rows.push({ metric: metricName, v1, v2 });
     });
 
@@ -275,45 +301,50 @@ function Page() {
 
           {/* Համեմատական աղյուսակ */}
           <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl transition-colors duration-500">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4">
-              Comparative Statistics ({countryOneName} vs {countryTwoName})
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4 flex items-center gap-3">
+              <span>
+                Comparative Statistics ({countryOneName} vs {countryTwoName})
+              </span>
+              {isLoading && (
+                <Spinner size="sm" color="primary" label={undefined} />
+              )}
             </h2>
 
             <div className="rounded-xl dark:border-gray-700 flex justify-between gap-6">
               {isoOne && isoTwo ? (
-                isLoading ? (
-                  <div className="w-full py-16 flex items-center justify-center">
-                    <Spinner label="Loading..." color="primary" />
-                  </div>
-                ) : (
-                  <Table
-                    aria-label="Comparative statistics table"
-                    className="w-full border border-gray-200 rounded-2xl overflow-hidden"
-                    classNames={{
-                      base: "max-h-[520px] overflow-scroll",
-                      table: "min-h-[400px]",
-                    }}
-                    shadow="none"
-                    isHeaderSticky
-                  >
-                    <TableHeader>
-                      <TableColumn key="metric">Metric</TableColumn>
-                      <TableColumn key="country1">{countryOneName}</TableColumn>
-                      <TableColumn key="country2">{countryTwoName}</TableColumn>
-                    </TableHeader>
-                    <TableBody>
-                      {comparisonRows.map((row) => (
-                        <TableRow key={row.metric}>
-                          <TableCell className="font-semibold">
-                            {row.metric}
-                          </TableCell>
-                          <TableCell>{row.v1 || "N/A"}</TableCell>
-                          <TableCell>{row.v2 || "N/A"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )
+                <Table
+                  aria-label="Comparative statistics table"
+                  className="w-full border border-gray-200 rounded-2xl overflow-hidden"
+                  classNames={{
+                    base: "max-h-[520px] overflow-scroll",
+                    table: "min-h-[400px]",
+                  }}
+                  shadow="none"
+                  isHeaderSticky
+                  isStriped
+                  selectionMode="single"
+                >
+                  <TableHeader>
+                    <TableColumn key="metric">Metric</TableColumn>
+                    <TableColumn key="country1">{countryOneName}</TableColumn>
+                    <TableColumn key="country2">{countryTwoName}</TableColumn>
+                  </TableHeader>
+                  <TableBody>
+                    {comparisonRows.map((row) => (
+                      <TableRow key={row.metric}>
+                        <TableCell className="font-semibold">
+                          {row.metric}
+                        </TableCell>
+                        <TableCell>
+                          {row.v1 || (isLoading ? "…" : "N/A")}
+                        </TableCell>
+                        <TableCell>
+                          {row.v2 || (isLoading ? "…" : "N/A")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : (
                 <div className="text-center w-full py-10 text-gray-600 dark:text-gray-400">
                   Please select two countries for comparison.
