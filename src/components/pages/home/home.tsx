@@ -6,7 +6,7 @@ import L from "leaflet";
 import countriesData from "@/access/custom.geo.json";
 import people_info from "@/access/people_info.json";
 import RightInfo from "@/components/pages/home/right-info";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatLargeNumber, scoreToColor, truncateText } from "@/utils/helpers";
 import { useDispatch, useSelector } from "react-redux";
 import SelectCountry from "@/components/pages/home/select-country";
@@ -36,6 +36,7 @@ function Home() {
   const indicatorCode = useSelector((state: IStateSiteInfo) => state.siteInfo);
 
   const [indicators, setIndicators] = useState<ICountryData[][] | null>(null);
+  const geoJsonRef = useRef<L.GeoJSON<any> | null>(null);
 
   const data: any = countriesData;
   const { features } = data;
@@ -110,12 +111,15 @@ function Home() {
       indicatorCode.selectedCountry &&
       indicatorCode.selectedCountry.toLowerCase() ===
         feature.properties.name.toLowerCase();
+    const isHovered =
+      selectedCountryCodeHover &&
+      (feature as any).properties?.iso_a3_eh === selectedCountryCodeHover;
 
     return {
       fillColor: getCountryColor(feature.properties.name),
 
-      color: isSelected ? "black" : "darkblue",
-      weight: isSelected ? 2 : 1,
+      color: isHovered ? "white" : isSelected ? "black" : "white",
+      weight: isHovered ? 2 : isSelected ? 2 : 1,
 
       opacity: 1,
       fillOpacity: 0.7,
@@ -138,6 +142,10 @@ function Home() {
           setSelectedCountryCodeHover(countryIco);
           setSelectedCountryHover(countryName);
         },
+        mouseout: () => {
+          setSelectedCountryCodeHover("");
+          setSelectedCountryHover("");
+        },
 
         click: () => {
           dispatch(setSelectCountryIso(countryIco));
@@ -156,6 +164,21 @@ function Home() {
     },
     [],
   );
+
+  // Re-apply styles on hover state changes to avoid flicker/overrides
+  useEffect(() => {
+    if (geoJsonRef.current) {
+      try {
+        (geoJsonRef.current as any).setStyle(countryStyle as any);
+      } catch {
+        console.log("setStyle error");
+      }
+    }
+  }, [
+    selectedCountryHover,
+    selectedCountryCodeHover,
+    indicatorCode.selectedCountry,
+  ]);
 
   function CalcActiveIndicator() {
     const _indicators = indicatorCode.allIndicators;
@@ -283,12 +306,13 @@ function Home() {
               data={countriesData as any}
               style={countryStyle}
               onEachFeature={onEachCountry as any}
+              ref={geoJsonRef as any}
             />
           </MapContainer>
           <SelectCountry allCountry={allCountry} />
 
           {indicatorCode.selectedCountry ? (
-            <div className="p-4 bg-white dark:bg-gray-800 dark:text-white absolute top-4 right-4 z-[1000] rounded-xl cursor-default shadow-2xl transition-colors duration-500 border border-gray-200 dark:border-gray-700">
+            <div className="w-[290px] p-4 bg-white dark:bg-gray-800 dark:text-white absolute top-4 right-4 z-[1000] rounded-xl cursor-default shadow-2xl transition-colors duration-500 border border-gray-200 dark:border-gray-700">
               <i
                 className="fa-solid fa-xmark absolute top-[-10px] right-[-10px] w-8 h-8 rounded-full flex justify-center items-center cursor-pointer
                bg-white dark:bg-gray-900 text-red-600 dark:text-red-400 shadow-xl hover:shadow-2xl transition-all"
