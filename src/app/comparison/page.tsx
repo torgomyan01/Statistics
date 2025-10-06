@@ -315,10 +315,6 @@ function Page() {
                 <Table
                   aria-label="Comparative statistics table"
                   className="w-full border border-gray-200 rounded-2xl overflow-hidden"
-                  classNames={{
-                    base: "max-h-[520px] overflow-scroll",
-                    table: "min-h-[400px]",
-                  }}
                   shadow="none"
                   isHeaderSticky
                   isStriped
