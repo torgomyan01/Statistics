@@ -18,6 +18,7 @@ import { Tooltip } from "@heroui/react";
 declare interface ICountryData {
   country_name: string;
   indicator_code: string;
+  country_code?: string; // optional ISO3 code when available
   object: {
     [key: string]: string | number;
   };
@@ -59,10 +60,7 @@ function Home() {
 
   async function FindAllInfo() {
     const codes = indicatorCode.selectedIndicator;
-    if (!codes || codes.length === 0) {
-      setIndicators(null);
-      return;
-    }
+
     const res = await ActionGetManyInfo(codes);
     const all = (res.data || []) as ICountryData[];
     // Group by indicator_code for compatibility with existing logic
@@ -189,37 +187,88 @@ function Home() {
   ]);
 
   function CalcActiveIndicator() {
-    const _indicators = indicatorCode.allIndicators;
+    // Count how many selected indicators have a value for the selected country
+    let activeCount = 0;
+    let sumScores = 0;
 
-    const findActiveIndicators = _indicators?.filter((item) =>
-      indicatorCode.selectedIndicator.some(
-        (_ind) => _ind === item.indicator_code,
-      ),
-    );
+    // Determine the "best" indicator for the selected country and compute its rank among countries with values
+    let bestIndicatorEntry: any = null; // ICountryData for selected country
+    let bestIndicatorRank = 0;
+    let bestIndicatorCount = 0;
 
-    const findMaxScore =
-      findActiveIndicators?.sort(
-        (_ind, _indB) =>
-          _ind.object[`${indicatorCode.selectedScoreYear}_score`] -
-          _indB.object[`${indicatorCode.selectedScoreYear}_score`],
-      ) || [];
+    const yearKey = `${indicatorCode.selectedScoreYear}_score`;
+    const countryIso = indicatorCode.selectedCountryIso;
 
-    const calcOnlyActiveInd = findActiveIndicators?.filter(
-      (_ind) => _ind.object[`${indicatorCode.selectedScoreYear}_score`] !== "",
-    );
+    if (indicators && countryIso) {
+      indicators.forEach((indicatorList) => {
+        // Find this country in the indicator list
+        const entry = indicatorList.find(
+          (c) =>
+            (c as any).country_code === countryIso ||
+            c.country_name === indicatorCode.selectedCountry,
+        );
+        const val = entry?.object?.[yearKey];
+        const hasValue = val !== undefined && val !== null && val !== "";
 
-    const activeScore = calcOnlyActiveInd?.reduce(
-      (a, b) => a + +b.object[`${indicatorCode.selectedScoreYear}_score`],
-      0,
-    );
+        if (hasValue) {
+          activeCount += 1;
+          sumScores += +val;
 
-    const activeScoreLength = calcOnlyActiveInd ? calcOnlyActiveInd.length : 0;
-    const activeSc = activeScore ? activeScore : 0;
+          // Build valid list and rank
+          const valid = indicatorList.filter((row) => {
+            const v = row.object?.[yearKey];
+            return v !== undefined && v !== null && v !== "";
+          });
+          if (valid.length) {
+            const isDescending =
+              (valid[0]?.object?.descending || "TRUE") === "TRUE";
+            valid.sort((a, b) => {
+              const av = +a.object[yearKey];
+              const bv = +b.object[yearKey];
+              return isDescending ? bv - av : av - bv;
+            });
+            const idx = valid.findIndex(
+              (r) =>
+                (r as any).country_code === countryIso ||
+                r.country_name === indicatorCode.selectedCountry,
+            );
+            const rank = idx >= 0 ? idx + 1 : null;
+
+            // Choose best by rank when comparable, otherwise by score
+            const better = () => {
+              if (!bestIndicatorEntry) {
+                return true;
+              }
+              if (rank !== null && bestIndicatorRank !== null) {
+                return rank < bestIndicatorRank; // lower rank is better
+              }
+              const bestVal = +bestIndicatorEntry.object[yearKey];
+              return +val > bestVal; // fallback by score
+            };
+
+            if (rank !== null && better()) {
+              bestIndicatorEntry = entry;
+              bestIndicatorRank = rank;
+              bestIndicatorCount = valid.length;
+            }
+          }
+        }
+      });
+    }
+
+    const avg = activeCount ? (sumScores / activeCount).toFixed(0) : "0";
+    const maxScore = bestIndicatorEntry
+      ? {
+          Indicator_name: bestIndicatorEntry.Indicator_name,
+          rank: bestIndicatorRank || undefined,
+          rankCount: bestIndicatorCount || undefined,
+        }
+      : undefined;
 
     return {
-      activeIndicator: `${calcOnlyActiveInd?.length} / ${indicatorCode.selectedIndicator.length}`,
-      activeScore: (activeSc / activeScoreLength).toFixed(0) || 0,
-      maxScore: findMaxScore[0],
+      activeIndicator: `${activeCount} / ${indicatorCode.selectedIndicator.length}`,
+      activeScore: avg,
+      maxScore,
     };
   }
 
@@ -357,9 +406,17 @@ function Home() {
                 </li>
                 <li className="text-[14px] flex-js-c gap-2">
                   <b>Best:</b>{" "}
-                  <Tooltip content={getCalcScore.maxScore?.Indicator_name}>
+                  <Tooltip
+                    content={
+                      getCalcScore.maxScore?.Indicator_name
+                        ? `${getCalcScore.maxScore.Indicator_name} [${getCalcScore.maxScore.rank || "-"} / ${getCalcScore.maxScore.rankCount || "-"}]`
+                        : "-"
+                    }
+                  >
                     {truncateText(
-                      getCalcScore.maxScore?.Indicator_name || "-",
+                      getCalcScore.maxScore?.Indicator_name
+                        ? `${getCalcScore.maxScore.Indicator_name} [${getCalcScore.maxScore.rank || "-"} / ${getCalcScore.maxScore.rankCount || "-"}]`
+                        : "-",
                       23,
                     )}
                   </Tooltip>
