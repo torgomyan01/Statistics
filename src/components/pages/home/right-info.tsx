@@ -1,14 +1,26 @@
-import { Slider } from "@heroui/react";
+import Slider from "@mui/material/Slider";
 import { useDispatch } from "react-redux";
 import { useCallback, useRef } from "react";
 import { setYear } from "@/redux/info";
 import clsx from "clsx";
+import { usePathname } from "next/navigation";
+import { SITE_URL } from "@/utils/consts";
 
 interface IThisProps {
   absolute?: boolean;
 }
 
+const marks = Array.from({ length: 20 }, (_, i) => ({
+  value: 1960 + i * 5,
+  label: `${1960 + i * 5}`,
+}));
+
+function valuetext(value: number) {
+  return `${value}`;
+}
+
 function RightInfo({ absolute = true }: IThisProps) {
+  const parentPath = usePathname();
   const dispatch = useDispatch();
   const debounceTimerRef: any = useRef(null);
 
@@ -19,7 +31,7 @@ function RightInfo({ absolute = true }: IThisProps) {
       }
 
       debounceTimerRef.current = setTimeout(() => {
-        dispatch(setYear(value));
+        dispatch(setYear(value.target.value));
       }, 1000);
     },
     [dispatch],
@@ -27,12 +39,16 @@ function RightInfo({ absolute = true }: IThisProps) {
 
   return (
     <div
-      className={clsx("w-full md:w-[50%] m-auto z-[1000] px-4 py-4", {
-        "absolute right-0 left-0 bottom-4": absolute,
-        relative: !absolute,
-      })}
+      className={clsx(
+        "w-full md:w-[80%] m-auto z-[1000] px-4 py-4 slider-site",
+        {
+          "absolute right-0 left-0 bottom-0": absolute,
+          relative: !absolute,
+          "comparison-page": parentPath === SITE_URL.COMPARISON,
+        },
+      )}
     >
-      <div className="w-full flex-jsb-c relative top-6 z-[-1]">
+      {/* <div className="w-full flex-jsb-c relative top-6 z-[-1]">
         {Array.from({ length: 20 }).map((_, i) => (
           <div
             key={`solid__${i}`}
@@ -43,9 +59,22 @@ function RightInfo({ absolute = true }: IThisProps) {
             </span>
           </div>
         ))}
-      </div>
+      </div> */}
       <div className="w-full slider-right relative z-[1000] mb-4">
         <Slider
+          color="primary"
+          aria-label="Always visible"
+          defaultValue={2024}
+          min={1960}
+          max={2024}
+          getAriaValueText={valuetext}
+          step={1}
+          marks={marks}
+          valueLabelDisplay="on"
+          onChange={handleSliderChange}
+        />
+
+        {/* <Slider
           className="w-full"
           color="foreground"
           defaultValue={2024}
@@ -59,7 +88,7 @@ function RightInfo({ absolute = true }: IThisProps) {
             track: "bg-gray-300",
             filler: "bg-gray-300",
           }}
-        />
+        /> */}
       </div>
     </div>
   );

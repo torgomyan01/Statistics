@@ -20,7 +20,7 @@ function MainTemplate({ children }: IThisProps) {
   return (
     <>
       <Header onToggleSidebar={toggleSidebar} />
-      <div className="w-full h-[calc(100dvh-74px)] flex-jsb-s">
+      <div className="w-full h-[calc(100dvh-60px)] flex-jsb-s">
         <div className="hidden md:block h-full">
           <LeftMenu />
         </div>

@@ -241,7 +241,7 @@ function Page() {
       // Format numbers with comma separators
       const formatNumber = (num: string | number) => {
         const numValue = typeof num === "string" ? parseInt(num) : num;
-        return isNaN(numValue) ? "0" : numValue.toLocaleString("en-US");
+        return isNaN(numValue) ? "" : numValue.toLocaleString("en-US");
       };
 
       const formattedScoreOne = formatNumber(scoreOne);
@@ -328,7 +328,7 @@ function Page() {
               </Autocomplete>
             </div>
 
-            <div className="relative">
+            <div className="relative mt-6">
               <RightInfo absolute={false} />
             </div>
           </div>
@@ -347,38 +347,60 @@ function Page() {
               {isoOne && isoTwo ? (
                 <Table
                   aria-label="Comparative statistics table"
-                  className="w-full border border-gray-200 rounded-2xl overflow-hidden"
+                  className="w-full border border-gray-200 dark:border-gray-600 rounded-2xl overflow-hidden"
                   shadow="none"
                   isHeaderSticky
                   isStriped
                   selectionMode="single"
                 >
                   <TableHeader>
-                    <TableColumn key="metric">Metric</TableColumn>
-                    <TableColumn key="country1">{countryOneName}</TableColumn>
-                    <TableColumn key="country2">{countryTwoName}</TableColumn>
+                    <TableColumn
+                      key="metric"
+                      className="text-gray-900 dark:text-white"
+                    >
+                      Metric
+                    </TableColumn>
+                    <TableColumn
+                      key="country1"
+                      className="text-gray-900 dark:text-white"
+                    >
+                      {countryOneName}
+                    </TableColumn>
+                    <TableColumn
+                      key="country2"
+                      className="text-gray-900 dark:text-white"
+                    >
+                      {countryTwoName}
+                    </TableColumn>
                   </TableHeader>
                   <TableBody>
                     {comparisonRows.map((row) => (
                       <TableRow key={row.metric}>
-                        <TableCell width="50%" className="font-semibold">
+                        <TableCell
+                          width="50%"
+                          className="font-semibold text-gray-900 dark:text-white"
+                        >
                           {row.metric}
                         </TableCell>
                         <TableCell
-                          className={clsx({
-                            "bg-green-200":
-                              row.r2 && (row.r2 || 0) > (row.r1 || 0),
+                          className={clsx("text-gray-900 dark:text-white", {
+                            "bg-green-200 dark:bg-green-800":
+                              typeof row.v1 === "string" && row.v1.includes("-")
+                                ? false
+                                : (row.r2 || 0) > (row.r1 || 0),
                           })}
                         >
                           {row.v1}
                         </TableCell>
                         <TableCell
-                          className={clsx({
-                            "bg-green-200":
-                              row.r1 && (row.r2 || 0) < (row.r1 || 0),
+                          className={clsx("text-gray-900 dark:text-white", {
+                            "bg-green-200 dark:bg-green-800":
+                              typeof row.v2 === "string" && row.v2.includes("-")
+                                ? false
+                                : (row.r2 || 0) < (row.r1 || 0),
                           })}
                         >
-                          {row.v2.toLocaleString("en-US")}
+                          {row.v2}
                         </TableCell>
                       </TableRow>
                     ))}

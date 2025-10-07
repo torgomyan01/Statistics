@@ -26,7 +26,7 @@ function ItemIndicator({ data }: IThisProps) {
       className="text-[13px] border-b border-gray-200 dark:border-gray-700 py-2 flex-jsb-c
       dark:text-gray-300 cursor-pointer
       bg-gray-300 font-bold px-2
-      dark:bg-gray-600 hover:bg-gray-200"
+      dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
       onClick={() => RemoveIndicatorCode(data.indicator_code)}
     >
       {data.Indicator_name}
@@ -35,7 +35,7 @@ function ItemIndicator({ data }: IThisProps) {
     <div
       className="text-[13px] border-b border-gray-200 dark:border-gray-700 py-2 flex-jsb-c
       dark:text-gray-300 cursor-pointer
-      px-2 hover:bg-gray-200"
+      px-2 hover:bg-gray-200 dark:hover:bg-gray-700"
       onClick={() => AddNewIndicatorCode(data.indicator_code)}
     >
       {data.Indicator_name}

@@ -32,3 +32,32 @@ $green: #1e4a2f;
     background: #fff;
   }
 }
+
+.slider-site{
+  .MuiSlider-track{
+    background: #0000;
+  }
+  .MuiSlider-rail{
+    background: #7a7a7a;
+  
+  }
+  .MuiSlider-thumb{
+    background: #000;
+    width: 5px;
+    border-radius: 0;
+  }
+  .MuiSlider-mark{
+    background-color: #fff;
+  }
+  .MuiSlider-root{
+    color: #0000;
+  }
+}
+
+.dark{
+  .comparison-page.slider-site{
+      .MuiSlider-markLabel{
+        color: #fff;
+      }
+  }
+}

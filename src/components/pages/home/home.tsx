@@ -31,6 +31,12 @@ interface CountryFeature extends Feature {
   geometry: Geometry;
 }
 
+// Format numbers with comma separators
+const formatNumber = (num: string | number) => {
+  const numValue = typeof num === "string" ? parseInt(num) : num;
+  return isNaN(numValue) ? "" : numValue.toLocaleString("en-US");
+};
+
 function Home() {
   const dispatch = useDispatch();
   const indicatorCode = useSelector((state: IStateSiteInfo) => state.siteInfo);
@@ -147,10 +153,10 @@ function Home() {
           setSelectedCountryCodeHover(countryIco);
           setSelectedCountryHover(countryName);
         },
-        // mouseout: () => {
-        //   setSelectedCountryCodeHover("");
-        //   setSelectedCountryHover("");
-        // },
+        mouseout: () => {
+          setSelectedCountryCodeHover("");
+          setSelectedCountryHover("");
+        },
 
         click: () => {
           dispatch(setSelectCountryIso(countryIco));
@@ -176,7 +182,7 @@ function Home() {
       try {
         (geoJsonRef.current as any).setStyle(countryStyle as any);
       } catch {
-        console.log("setStyle error");
+        // setStyle error - ignore
       }
     }
   }, [
@@ -255,7 +261,9 @@ function Home() {
       });
     }
 
-    const avg = activeCount ? (sumScores / activeCount).toFixed(0) : "0";
+    const avg = activeCount
+      ? formatNumber((sumScores / activeCount).toFixed(0))
+      : "0";
     const maxScore = bestIndicatorEntry
       ? {
           Indicator_name: bestIndicatorEntry.Indicator_name,
@@ -326,7 +334,9 @@ function Home() {
         countActive += 1;
       }
     });
-    const avg = countActive ? (sumScores / countActive).toFixed(0) : "0";
+    const avg = countActive
+      ? formatNumber((sumScores / countActive).toFixed(0))
+      : "0";
     return {
       activeIndicator: `${countActive} / ${indicatorCode.selectedIndicator.length}`,
       activeScore: avg,
@@ -368,18 +378,18 @@ function Home() {
           <SelectCountry allCountry={allCountry} />
 
           {indicatorCode.selectedCountry ? (
-            <div className="w-[300px] dark:text-white absolute top-4 right-4 z-[100000] rounded-xl cursor-default transition-colors duration-500">
-              <div className="bg-white p-4 rounded-xl">
+            <div className="w-[400px] dark:text-white absolute top-4 right-4 z-[100000] rounded-xl cursor-default transition-colors duration-500">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl dark:shadow-2xl">
                 <i
                   className="fa-solid fa-xmark absolute top-[-10px] right-[-10px] w-8 h-8 rounded-full flex justify-center items-center cursor-pointer
-               bg-white dark:bg-gray-900 text-red-600 dark:text-red-400 shadow-xl hover:shadow-2xl transition-all"
+               bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-xl hover:shadow-2xl transition-all"
                   onClick={() => dispatch(setSelectCountry(null))}
                 />
-                <h4 className="font-bold mb-2">
+                <h4 className="font-bold mb-2 text-gray-900 dark:text-white">
                   {indicatorCode.selectedCountry}
                 </h4>
 
-                <ul>
+                <ul className="text-gray-700 dark:text-gray-300">
                   <li className="text-[14px]">
                     <b>Area:</b>{" "}
                     {formatLargeNumber(area[indicatorCode.selectedScoreYear])}{" "}
@@ -411,7 +421,7 @@ function Home() {
               </div>
 
               {selectedCountryCodeHover && (
-                <ul className="mt-4 rounded-[12px] p-4 bg-white">
+                <ul className="mt-2 rounded-[12px] p-4 bg-white dark:bg-gray-800 shadow-xl dark:shadow-2xl text-gray-700 dark:text-gray-300">
                   <li className="text-[14px]">
                     <b>Hover Country:</b> {selectedCountryHover}
                   </li>
