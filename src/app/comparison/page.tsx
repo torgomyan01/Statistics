@@ -17,6 +17,7 @@ import MainTemplate from "@/components/common/main-template/main-template";
 import RightInfo from "@/components/pages/home/right-info";
 import { useSelector } from "react-redux";
 import { ActionGetManyInfo } from "@/app/actions/industry/get-many";
+import clsx from "clsx";
 const peopleData: any = people_info;
 
 function Page() {
@@ -186,25 +187,30 @@ function Page() {
   }, [indicatorDatasets, selectedScoreYear]);
 
   const comparisonRows = useMemo(() => {
-    const rows: { metric: string; v1: string | number; v2: string | number }[] =
-      [];
-    // Population
-    const popOne = (populationByCode[isoOne] || {})[selectedScoreYear] || 0;
-    const popTwo = (populationByCode[isoTwo] || {})[selectedScoreYear] || 0;
-    rows.push({
-      metric: "Population, total",
-      v1: (popOne as number).toLocaleString(),
-      v2: (popTwo as number).toLocaleString(),
-    });
+    const rows: {
+      metric: string;
+      v1: string | number;
+      v2: string | number;
+      r1: number | null;
+      r2: number | null;
+    }[] = [];
+    // // Population
+    // const popOne = (populationByCode[isoOne] || {})[selectedScoreYear] || 0;
+    // const popTwo = (populationByCode[isoTwo] || {})[selectedScoreYear] || 0;
+    // rows.push({
+    //   metric: "Population, total",
+    //   v1: (popOne as number).toLocaleString(),
+    //   v2: (popTwo as number).toLocaleString(),
+    // });
 
-    // Area
-    const areaOne = (areaByCode[isoOne] || {})[selectedScoreYear] || 0;
-    const areaTwo = (areaByCode[isoTwo] || {})[selectedScoreYear] || 0;
-    rows.push({
-      metric: "Surface area (sq. km)",
-      v1: (areaOne as number).toLocaleString(),
-      v2: (areaTwo as number).toLocaleString(),
-    });
+    // // Area
+    // const areaOne = (areaByCode[isoOne] || {})[selectedScoreYear] || 0;
+    // const areaTwo = (areaByCode[isoTwo] || {})[selectedScoreYear] || 0;
+    // rows.push({
+    //   metric: "Surface area (sq. km)",
+    //   v1: (areaOne as number).toLocaleString(),
+    //   v2: (areaTwo as number).toLocaleString(),
+    // });
 
     // Indicators
     selectedIndicator?.forEach((code) => {
@@ -229,16 +235,29 @@ function Page() {
       const two = list.find((x) => x.country_code === isoTwo);
       const metricName = one?.Indicator_name || two?.Indicator_name || code;
 
-      const scoreOne = one?.object[scoreKey].split(".")[0] ?? 0;
-      const scoreTwo = two?.object[scoreKey].split(".")[0] ?? 0;
+      const scoreOne = one?.object[selectedScoreYear].split(".")[0] ?? 0;
+      const scoreTwo = two?.object[selectedScoreYear].split(".")[0] ?? 0;
+
+      // Format numbers with comma separators
+      const formatNumber = (num: string | number) => {
+        const numValue = typeof num === "string" ? parseInt(num) : num;
+        return isNaN(numValue) ? "0" : numValue.toLocaleString("en-US");
+      };
+
+      const formattedScoreOne = formatNumber(scoreOne);
+      const formattedScoreTwo = formatNumber(scoreTwo);
 
       const v1 =
-        r1 !== null ? `${scoreOne} (${r1}/${countWithRank})` : `${scoreOne} -`;
+        r1 !== null
+          ? `${formattedScoreOne} (${r1}/${countWithRank})`
+          : `${formattedScoreOne} -`;
 
       const v2 =
-        r2 !== null ? `${scoreTwo} (${r2}/${countWithRank})` : `${scoreTwo} -`;
+        r2 !== null
+          ? `${formattedScoreTwo} (${r2}/${countWithRank})`
+          : `${formattedScoreTwo} -`;
 
-      rows.push({ metric: metricName, v1, v2 });
+      rows.push({ metric: metricName, v1, v2, r1, r2 });
     });
 
     return rows;
@@ -314,7 +333,6 @@ function Page() {
             </div>
           </div>
 
-          {/* Համեմատական աղյուսակ */}
           <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl transition-colors duration-500">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4 flex items-center gap-3">
               <span>
@@ -346,11 +364,21 @@ function Page() {
                         <TableCell width="50%" className="font-semibold">
                           {row.metric}
                         </TableCell>
-                        <TableCell>
-                          {row.v1 || (isLoading ? "…" : "N/A")}
+                        <TableCell
+                          className={clsx({
+                            "bg-green-200":
+                              row.r2 && (row.r2 || 0) > (row.r1 || 0),
+                          })}
+                        >
+                          {row.v1}
                         </TableCell>
-                        <TableCell>
-                          {row.v2 || (isLoading ? "…" : "N/A")}
+                        <TableCell
+                          className={clsx({
+                            "bg-green-200":
+                              row.r1 && (row.r2 || 0) < (row.r1 || 0),
+                          })}
+                        >
+                          {row.v2.toLocaleString("en-US")}
                         </TableCell>
                       </TableRow>
                     ))}

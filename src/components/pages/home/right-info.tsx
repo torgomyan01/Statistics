@@ -34,7 +34,14 @@ function RightInfo({ absolute = true }: IThisProps) {
     >
       <div className="w-full flex-jsb-c relative top-6 z-[-1]">
         {Array.from({ length: 20 }).map((_, i) => (
-          <div key={`solid__${i}`} className="w-[1px] h-[30px] bg-black/20" />
+          <div
+            key={`solid__${i}`}
+            className="w-[1px] h-[30px] bg-black/20 relative"
+          >
+            <span className="text-[10px] absolute top-full transform translate-x-[-50%] text-black">
+              {1960 + i * 5}
+            </span>
+          </div>
         ))}
       </div>
       <div className="w-full slider-right relative z-[1000] mb-4">
@@ -53,10 +60,6 @@ function RightInfo({ absolute = true }: IThisProps) {
             filler: "bg-gray-300",
           }}
         />
-      </div>
-      <div className="w-[calc(100%+40px)] -ml-[20px] flex-jsb-c mb-[-10px]">
-        <span>1960</span>
-        <span>2024</span>
       </div>
     </div>
   );

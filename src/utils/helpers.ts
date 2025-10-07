@@ -86,12 +86,16 @@ export const createSlug = (title: string) => {
 };
 
 export const formatLargeNumber = (number: number) => {
+  console.log(number, 5555);
+
   const formatter = new Intl.NumberFormat("en-US", {
     notation: "compact",
     maximumFractionDigits: 2,
   });
 
-  return formatter.format(number);
+  const formatted = formatter.format(number);
+
+  return formatted !== "NaN" ? formatted : "-";
 };
 
 export const truncateText = (

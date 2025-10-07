@@ -7,13 +7,12 @@ import countriesData from "@/access/custom.geo.json";
 import people_info from "@/access/people_info.json";
 import RightInfo from "@/components/pages/home/right-info";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatLargeNumber, scoreToColor, truncateText } from "@/utils/helpers";
+import { formatLargeNumber, scoreToColor } from "@/utils/helpers";
 import { useDispatch, useSelector } from "react-redux";
 import SelectCountry from "@/components/pages/home/select-country";
 import { setSelectCountry, setSelectCountryIso } from "@/redux/info";
 import { ActionGetManyInfo } from "@/app/actions/industry/get-many";
 import MainTemplate from "@/components/common/main-template/main-template";
-import { Tooltip } from "@heroui/react";
 
 declare interface ICountryData {
   country_name: string;
@@ -124,8 +123,8 @@ function Home() {
     return {
       fillColor: getCountryColor(feature.properties.name),
 
-      color: isHovered ? "white" : isSelected ? "black" : "white",
-      weight: isHovered ? 2 : isSelected ? 2 : 1,
+      color: isHovered ? "black" : isSelected ? "black" : "black",
+      weight: isHovered ? 3 : isSelected ? 3 : 1,
 
       opacity: 1,
       fillOpacity: 0.7,
@@ -148,10 +147,10 @@ function Home() {
           setSelectedCountryCodeHover(countryIco);
           setSelectedCountryHover(countryName);
         },
-        mouseout: () => {
-          setSelectedCountryCodeHover("");
-          setSelectedCountryHover("");
-        },
+        // mouseout: () => {
+        //   setSelectedCountryCodeHover("");
+        //   setSelectedCountryHover("");
+        // },
 
         click: () => {
           dispatch(setSelectCountryIso(countryIco));
@@ -369,62 +368,50 @@ function Home() {
           <SelectCountry allCountry={allCountry} />
 
           {indicatorCode.selectedCountry ? (
-            <div className="w-[290px] p-4 bg-white dark:bg-gray-800 dark:text-white absolute top-4 right-4 z-[1000] rounded-xl cursor-default shadow-2xl transition-colors duration-500 border border-gray-200 dark:border-gray-700">
-              <i
-                className="fa-solid fa-xmark absolute top-[-10px] right-[-10px] w-8 h-8 rounded-full flex justify-center items-center cursor-pointer
+            <div className="w-[300px] dark:text-white absolute top-4 right-4 z-[100000] rounded-xl cursor-default transition-colors duration-500">
+              <div className="bg-white p-4 rounded-xl">
+                <i
+                  className="fa-solid fa-xmark absolute top-[-10px] right-[-10px] w-8 h-8 rounded-full flex justify-center items-center cursor-pointer
                bg-white dark:bg-gray-900 text-red-600 dark:text-red-400 shadow-xl hover:shadow-2xl transition-all"
-                onClick={() => dispatch(setSelectCountry(null))}
-              />
-              <h4 className="font-bold mb-2">
-                {indicatorCode.selectedCountry}
-              </h4>
+                  onClick={() => dispatch(setSelectCountry(null))}
+                />
+                <h4 className="font-bold mb-2">
+                  {indicatorCode.selectedCountry}
+                </h4>
 
-              <ul>
-                <li className="text-[14px]">
-                  <b>Selected Year:</b> {indicatorCode.selectedScoreYear}
-                </li>
-                <li className="text-[14px]">
-                  <b>Area:</b>{" "}
-                  {formatLargeNumber(area[indicatorCode.selectedScoreYear])} sq
-                  km
-                </li>
-                <li className="text-[14px]">
-                  <b>Population:</b>{" "}
-                  {formatLargeNumber(
-                    Population[indicatorCode.selectedScoreYear],
-                  )}
-                </li>
-                <li className="text-[14px]">
-                  <b>Number of indicators with data:</b>{" "}
-                  {getCalcScore.activeIndicator}
-                </li>
-                <li className="text-[14px]">
-                  <b>Average score:</b>{" "}
-                  {getCalcScore.activeScore === "NaN"
-                    ? "-"
-                    : getCalcScore.activeScore}
-                </li>
-                <li className="text-[14px] flex-js-c gap-2">
-                  <b>Best:</b>{" "}
-                  <Tooltip
-                    content={
-                      getCalcScore.maxScore?.Indicator_name
-                        ? `${getCalcScore.maxScore.Indicator_name} [${getCalcScore.maxScore.rank || "-"} / ${getCalcScore.maxScore.rankCount || "-"}]`
-                        : "-"
-                    }
-                  >
-                    {truncateText(
-                      getCalcScore.maxScore?.Indicator_name
-                        ? `${getCalcScore.maxScore.Indicator_name} [${getCalcScore.maxScore.rank || "-"} / ${getCalcScore.maxScore.rankCount || "-"}]`
-                        : "-",
-                      23,
+                <ul>
+                  <li className="text-[14px]">
+                    <b>Area:</b>{" "}
+                    {formatLargeNumber(area[indicatorCode.selectedScoreYear])}{" "}
+                    sq km
+                  </li>
+                  <li className="text-[14px]">
+                    <b>Population:</b>{" "}
+                    {formatLargeNumber(
+                      Population[indicatorCode.selectedScoreYear],
                     )}
-                  </Tooltip>
-                </li>
-              </ul>
+                  </li>
+                  <li className="text-[14px]">
+                    <b>Number of indicators with data:</b>{" "}
+                    {getCalcScore.activeIndicator}
+                  </li>
+                  <li className="text-[14px]">
+                    <b>Average score:</b>{" "}
+                    {getCalcScore.activeScore === "NaN"
+                      ? "-"
+                      : getCalcScore.activeScore}
+                  </li>
+                  <li className="text-[14px] flex-js-s gap-2">
+                    <b>Best:</b>{" "}
+                    {getCalcScore.maxScore?.Indicator_name
+                      ? `${getCalcScore.maxScore.rank || "-"} ${getCalcScore.maxScore.Indicator_name}`
+                      : "-"}
+                  </li>
+                </ul>
+              </div>
 
               {selectedCountryCodeHover && (
-                <ul className="mt-4">
+                <ul className="mt-4 rounded-[12px] p-4 bg-white">
                   <li className="text-[14px]">
                     <b>Hover Country:</b> {selectedCountryHover}
                   </li>
