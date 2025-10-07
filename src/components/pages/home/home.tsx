@@ -11,7 +11,7 @@ import { formatLargeNumber, scoreToColor, truncateText } from "@/utils/helpers";
 import { useDispatch, useSelector } from "react-redux";
 import SelectCountry from "@/components/pages/home/select-country";
 import { setSelectCountry, setSelectCountryIso } from "@/redux/info";
-import { ActionGetAllInfo } from "@/app/actions/industry/get-indicatr-code";
+import { ActionGetManyInfo } from "@/app/actions/industry/get-many";
 import MainTemplate from "@/components/common/main-template/main-template";
 import { Tooltip } from "@heroui/react";
 
@@ -55,16 +55,22 @@ function Home() {
 
   useEffect(FindAllInfo, [indicatorCode]);
 
-  function FindAllInfo() {
-    const allData = indicatorCode.selectedIndicator.map((item) => {
-      return ActionGetAllInfo(item);
+  async function FindAllInfo() {
+    const codes = indicatorCode.selectedIndicator;
+    if (!codes || codes.length === 0) {
+      setIndicators(null);
+      return;
+    }
+    const res = await ActionGetManyInfo(codes);
+    const all = (res.data || []) as ICountryData[];
+    // Group by indicator_code for compatibility with existing logic
+    const byCode = new Map<string, ICountryData[]>();
+    all.forEach((row) => {
+      const arr = byCode.get(row.indicator_code) || [];
+      arr.push(row);
+      byCode.set(row.indicator_code, arr);
     });
-
-    Promise.all(allData).then((res) => {
-      const clearRes: any = res.map((item) => item.data);
-
-      setIndicators(clearRes);
-    });
+    setIndicators(Array.from(byCode.values()));
   }
 
   const getCountryColor = useCallback(
@@ -342,12 +348,18 @@ function Home() {
                   {getCalcScore.activeIndicator}
                 </li>
                 <li className="text-[14px]">
-                  <b>Average score:</b> {getCalcScore.activeScore}
+                  <b>Average score:</b>{" "}
+                  {getCalcScore.activeScore === "NaN"
+                    ? "-"
+                    : getCalcScore.activeScore}
                 </li>
                 <li className="text-[14px] flex-js-c gap-2">
                   <b>Best:</b>{" "}
                   <Tooltip content={getCalcScore.maxScore?.Indicator_name}>
-                    {truncateText(getCalcScore.maxScore?.Indicator_name, 23)}
+                    {truncateText(
+                      getCalcScore.maxScore?.Indicator_name || "-",
+                      23,
+                    )}
                   </Tooltip>
                 </li>
               </ul>
@@ -382,7 +394,10 @@ function Home() {
                     {hoverStats.activeIndicator}
                   </li>
                   <li className="text-[14px]">
-                    <b>Average score:</b> {hoverStats.activeScore}
+                    <b>Average score:</b>{" "}
+                    {hoverStats.activeScore === "NaN"
+                      ? "-"
+                      : hoverStats.activeScore}
                   </li>
                 </ul>
               )}

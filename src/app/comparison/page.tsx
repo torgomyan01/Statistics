@@ -16,7 +16,7 @@ import people_info from "@/access/people_info.json";
 import MainTemplate from "@/components/common/main-template/main-template";
 import RightInfo from "@/components/pages/home/right-info";
 import { useSelector } from "react-redux";
-import { ActionGetAllInfo } from "@/app/actions/industry/get-indicatr-code";
+import { ActionGetManyInfo } from "@/app/actions/industry/get-many";
 const peopleData: any = people_info;
 
 function Page() {
@@ -119,20 +119,25 @@ function Page() {
     }
 
     setIsLoading(true);
-    let remaining = missing.length;
-    missing.forEach((code) => {
-      ActionGetAllInfo(code).then((resp) => {
-        if (!isMounted) {
-          return;
-        }
-        const data = (resp.data || []) as ICountryData[];
-        indicatorCacheRef.current.set(code, data);
-        setIndicatorDatasets((prev) => ({ ...prev, [code]: data }));
-        remaining -= 1;
-        if (remaining <= 0) {
-          setIsLoading(false);
-        }
+    ActionGetManyInfo(missing).then((resp) => {
+      if (!isMounted) {
+        return;
+      }
+      const rows = (resp.data || []) as ICountryData[];
+      const grouped = new Map<string, ICountryData[]>();
+      rows.forEach((row) => {
+        const arr = grouped.get(row.indicator_code) || [];
+        arr.push(row);
+        grouped.set(row.indicator_code, arr);
       });
+      const next: Record<string, ICountryData[]> = {} as any;
+      missing.forEach((code) => {
+        const arr = grouped.get(code) || [];
+        indicatorCacheRef.current.set(code, arr);
+        next[code] = arr;
+      });
+      setIndicatorDatasets((prev) => ({ ...prev, ...next }));
+      setIsLoading(false);
     });
 
     return () => {
@@ -212,17 +217,27 @@ function Page() {
         const val = row.object?.[scoreKey];
         return val !== undefined && val !== null && val !== "";
       });
+
       const countWithRank = valid.length;
 
       const rankMap = ranksByIndicator[code] || new Map<string, number>();
+
       const r1 = rankMap.get(isoOne) ?? null;
       const r2 = rankMap.get(isoTwo) ?? null;
 
       const one = list.find((x) => x.country_code === isoOne);
       const two = list.find((x) => x.country_code === isoTwo);
       const metricName = one?.Indicator_name || two?.Indicator_name || code;
-      const v1 = r1 !== null ? `${r1}/${countWithRank}` : `/${countWithRank}`;
-      const v2 = r2 !== null ? `${r2}/${countWithRank}` : `/${countWithRank}`;
+
+      const scoreOne = one?.object[scoreKey].split(".")[0] ?? 0;
+      const scoreTwo = two?.object[scoreKey].split(".")[0] ?? 0;
+
+      const v1 =
+        r1 !== null ? `${scoreOne} (${r1}/${countWithRank})` : `${scoreOne} -`;
+
+      const v2 =
+        r2 !== null ? `${scoreTwo} (${r2}/${countWithRank})` : `${scoreTwo} -`;
+
       rows.push({ metric: metricName, v1, v2 });
     });
 
@@ -328,7 +343,7 @@ function Page() {
                   <TableBody>
                     {comparisonRows.map((row) => (
                       <TableRow key={row.metric}>
-                        <TableCell className="font-semibold">
+                        <TableCell width="50%" className="font-semibold">
                           {row.metric}
                         </TableCell>
                         <TableCell>
