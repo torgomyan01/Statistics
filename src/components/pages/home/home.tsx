@@ -53,7 +53,9 @@ function Home() {
     };
   });
 
-  useEffect(FindAllInfo, [indicatorCode]);
+  useEffect(() => {
+    FindAllInfo();
+  }, [indicatorCode]);
 
   async function FindAllInfo() {
     const codes = indicatorCode.selectedIndicator;
