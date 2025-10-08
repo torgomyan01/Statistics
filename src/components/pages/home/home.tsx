@@ -154,7 +154,6 @@ function Home() {
         }
 
         let activeCount = 0;
-        let sumScores = 0;
         const yearKey = `${indicatorCode.selectedScoreYear}_score`;
 
         indicators.forEach((indicatorList) => {
@@ -168,15 +167,12 @@ function Home() {
 
           if (hasValue) {
             activeCount += 1;
-            sumScores += +val;
           }
         });
 
-        const avg = activeCount
-          ? formatNumber((sumScores / activeCount).toFixed(0))
-          : "0";
+        const ratio = `${activeCount} / ${indicatorCode.selectedIndicator.length}`;
 
-        return avg;
+        return ratio;
       };
 
       const countryScore = getCountryScore(countryName, countryIco);
@@ -184,7 +180,7 @@ function Home() {
         <div style="min-width: 200px;">
           <h3 style="margin: 0 0 8px 0; font-weight: bold; color: #333;">${countryName}</h3>
           <p style="margin: 4px 0; font-size: 14px; color: #666;">
-            <strong>Average Score:</strong> ${countryScore}
+            <strong>Indicators:</strong> ${countryScore}
           </p>
           <p style="margin: 4px 0; font-size: 12px; color: #888;">
             Year: ${indicatorCode.selectedScoreYear}
@@ -374,7 +370,6 @@ function Home() {
 
       // Calculate score for this country
       let activeCount = 0;
-      let sumScores = 0;
 
       indicators.forEach((indicatorList) => {
         const entry = indicatorList.find(
@@ -387,16 +382,11 @@ function Home() {
 
         if (hasValue) {
           activeCount += 1;
-          sumScores += +val;
         }
       });
 
-      const avg = activeCount
-        ? formatNumber((sumScores / activeCount).toFixed(0))
-        : "0";
-
       // Only show labels for countries with data
-      if (activeCount > 0 && avg !== "0") {
+      if (activeCount > 0) {
         // Get country center coordinates
         const coordinates = country.geometry.coordinates;
         let centerLat = 0;
@@ -440,7 +430,7 @@ function Home() {
               border: 1px solid white;
               box-shadow: 0 1px 3px rgba(0,0,0,0.3);
             ">
-              ${avg}
+              ${activeCount} / ${indicatorCode.selectedIndicator.length}
             </div>
           `,
           className: "score-label",
@@ -452,13 +442,18 @@ function Home() {
           position: [centerLat, centerLng],
           icon: scoreIcon,
           countryName,
-          score: avg,
+          score: `${activeCount} / ${indicatorCode.selectedIndicator.length}`,
         });
       }
     });
 
     return labels;
-  }, [indicators, indicatorCode.selectedScoreYear, features]);
+  }, [
+    indicators,
+    indicatorCode.selectedScoreYear,
+    indicatorCode.selectedIndicator.length,
+    features,
+  ]);
 
   // removed debug logs
 

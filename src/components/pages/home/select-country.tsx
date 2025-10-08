@@ -26,21 +26,23 @@ function SelectCountry({ allCountry }: IThisProps) {
         selectedKey={indicatorCode}
         onSelectionChange={OnChangeCountry}
       >
-        {allCountry.map((country: any) => (
-          <AutocompleteItem
-            key={country.name}
-            startContent={
-              <Avatar
-                alt={country.name}
-                radius="none"
-                className="w-6 h-6"
-                src={`https://flagcdn.com/${country.isoCode.toLowerCase()}.svg`}
-              />
-            }
-          >
-            {country.name}
-          </AutocompleteItem>
-        ))}
+        {allCountry
+          .sort((a: any, b: any) => a.name.localeCompare(b.name))
+          .map((country: any) => (
+            <AutocompleteItem
+              key={country.name}
+              startContent={
+                <Avatar
+                  alt={country.name}
+                  radius="none"
+                  className="w-6 h-6"
+                  src={`https://flagcdn.com/${country.isoCode.toLowerCase()}.svg`}
+                />
+              }
+            >
+              {country.name}
+            </AutocompleteItem>
+          ))}
       </Autocomplete>
     </div>
   );
