@@ -1,4 +1,4 @@
-import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
+import { GeoJSON, MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Feature, Geometry } from "geojson";
 import L from "leaflet";
@@ -140,13 +140,59 @@ function Home() {
   const [selectedCountryHover, setSelectedCountryHover] = useState<string>("");
   const [selectedCountryCodeHover, setSelectedCountryCodeHover] =
     useState<string>("");
+  const [showScoreLabels, setShowScoreLabels] = useState<boolean>(true);
 
   const onEachCountry = useCallback(
     (country: CountryFeature, layer: L.Layer) => {
       const countryName = country.properties.name;
       const countryIco = country.properties.iso_a3_eh;
 
-      layer.bindPopup(countryName);
+      // Calculate score for this country
+      const getCountryScore = (countryName: string, countryIso: string) => {
+        if (!indicators) {
+          return "0";
+        }
+
+        let activeCount = 0;
+        let sumScores = 0;
+        const yearKey = `${indicatorCode.selectedScoreYear}_score`;
+
+        indicators.forEach((indicatorList) => {
+          const entry = indicatorList.find(
+            (c) =>
+              (c as any).country_code === countryIso ||
+              c.country_name === countryName,
+          );
+          const val = entry?.object?.[yearKey];
+          const hasValue = val !== undefined && val !== null && val !== "";
+
+          if (hasValue) {
+            activeCount += 1;
+            sumScores += +val;
+          }
+        });
+
+        const avg = activeCount
+          ? formatNumber((sumScores / activeCount).toFixed(0))
+          : "0";
+
+        return avg;
+      };
+
+      const countryScore = getCountryScore(countryName, countryIco);
+      const popupContent = `
+        <div style="min-width: 200px;">
+          <h3 style="margin: 0 0 8px 0; font-weight: bold; color: #333;">${countryName}</h3>
+          <p style="margin: 4px 0; font-size: 14px; color: #666;">
+            <strong>Average Score:</strong> ${countryScore}
+          </p>
+          <p style="margin: 4px 0; font-size: 12px; color: #888;">
+            Year: ${indicatorCode.selectedScoreYear}
+          </p>
+        </div>
+      `;
+
+      layer.bindPopup(popupContent);
 
       layer.on({
         mouseover: () => {
@@ -173,7 +219,7 @@ function Home() {
         },
       });
     },
-    [],
+    [indicators, indicatorCode.selectedScoreYear],
   );
 
   // Re-apply styles on hover state changes to avoid flicker/overrides
@@ -313,6 +359,107 @@ function Home() {
 
   const getCalcScore = CalcActiveIndicator();
 
+  // Create score labels for all countries
+  const countryScoreLabels = useMemo(() => {
+    if (!indicators || !features) {
+      return [];
+    }
+
+    const labels: any[] = [];
+    const yearKey = `${indicatorCode.selectedScoreYear}_score`;
+
+    features.forEach((country: any) => {
+      const countryName = country.properties.name;
+      const countryIso = country.properties.iso_a3_eh;
+
+      // Calculate score for this country
+      let activeCount = 0;
+      let sumScores = 0;
+
+      indicators.forEach((indicatorList) => {
+        const entry = indicatorList.find(
+          (c) =>
+            (c as any).country_code === countryIso ||
+            c.country_name === countryName,
+        );
+        const val = entry?.object?.[yearKey];
+        const hasValue = val !== undefined && val !== null && val !== "";
+
+        if (hasValue) {
+          activeCount += 1;
+          sumScores += +val;
+        }
+      });
+
+      const avg = activeCount
+        ? formatNumber((sumScores / activeCount).toFixed(0))
+        : "0";
+
+      // Only show labels for countries with data
+      if (activeCount > 0 && avg !== "0") {
+        // Get country center coordinates
+        const coordinates = country.geometry.coordinates;
+        let centerLat = 0;
+        let centerLng = 0;
+
+        if (country.geometry.type === "Polygon") {
+          // Calculate center of polygon
+          const coords = coordinates[0];
+          let sumLat = 0;
+          let sumLng = 0;
+          coords.forEach((coord: number[]) => {
+            sumLng += coord[0];
+            sumLat += coord[1];
+          });
+          centerLng = sumLng / coords.length;
+          centerLat = sumLat / coords.length;
+        } else if (country.geometry.type === "MultiPolygon") {
+          // Calculate center of first polygon
+          const coords = coordinates[0][0];
+          let sumLat = 0;
+          let sumLng = 0;
+          coords.forEach((coord: number[]) => {
+            sumLng += coord[0];
+            sumLat += coord[1];
+          });
+          centerLng = sumLng / coords.length;
+          centerLat = sumLat / coords.length;
+        }
+
+        // Create custom icon for score label
+        const scoreIcon = L.divIcon({
+          html: `
+            <div style="
+              background: rgba(0, 0, 0, 0.7);
+              color: white;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 11px;
+              font-weight: bold;
+              text-align: center;
+              border: 1px solid white;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            ">
+              ${avg}
+            </div>
+          `,
+          className: "score-label",
+          iconSize: [40, 20],
+          iconAnchor: [20, 10],
+        });
+
+        labels.push({
+          position: [centerLat, centerLng],
+          icon: scoreIcon,
+          countryName,
+          score: avg,
+        });
+      }
+    });
+
+    return labels;
+  }, [indicators, indicatorCode.selectedScoreYear, features]);
+
   // removed debug logs
 
   const hoverStats = useMemo(() => {
@@ -374,8 +521,49 @@ function Home() {
               onEachFeature={onEachCountry as any}
               ref={geoJsonRef as any}
             />
+
+            {/* Score labels for all countries */}
+            {showScoreLabels &&
+              countryScoreLabels.map((label, index) => (
+                <Marker
+                  key={`score-label-${index}`}
+                  position={label.position}
+                  icon={label.icon}
+                >
+                  <Popup>
+                    <div>
+                      <strong>{label.countryName}</strong>
+                      <br />
+                      Average Score: {label.score}
+                      <br />
+                      Year: {indicatorCode.selectedScoreYear}
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
           </MapContainer>
           <SelectCountry allCountry={allCountry} />
+
+          {/* Toggle button for score labels */}
+          <div className="absolute top-[80px] left-3 z-[1000]">
+            <button
+              onClick={() => setShowScoreLabels(!showScoreLabels)}
+              className={`
+                w-[30px] flex-jc-c h-[40px] rounded-[4px] font-medium text-sm transition-all duration-200 cursor-pointer
+                ${
+                  showScoreLabels
+                    ? "bg-white text-black shadow-lg hover:bg-gray-200"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                }
+              `}
+            >
+              {showScoreLabels ? (
+                <i className="fa-solid fa-eye-slash"></i>
+              ) : (
+                <i className="fa-solid fa-eye"></i>
+              )}
+            </button>
+          </div>
 
           {indicatorCode.selectedCountry ? (
             <div className="w-[400px] dark:text-white absolute top-4 right-4 z-[100000] rounded-xl cursor-default transition-colors duration-500">

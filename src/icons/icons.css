@@ -79,6 +79,14 @@
   content: "\f0c9";
 }
 
+.fa-eye-slash:before {
+  content: "\f070";
+}
+
+.fa-eye:before {
+  content: "\f06e";
+}
+
 /*---------------------------------*/
 
 @font-face {

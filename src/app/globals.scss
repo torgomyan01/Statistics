@@ -33,31 +33,45 @@ $green: #1e4a2f;
   }
 }
 
-.slider-site{
-  .MuiSlider-track{
+.slider-site {
+  .MuiSlider-track {
     background: #0000;
   }
-  .MuiSlider-rail{
+  .MuiSlider-rail {
     background: #7a7a7a;
-  
   }
-  .MuiSlider-thumb{
+  .MuiSlider-thumb {
     background: #000;
     width: 5px;
     border-radius: 0;
   }
-  .MuiSlider-mark{
+  .MuiSlider-mark {
     background-color: #fff;
   }
-  .MuiSlider-root{
+  .MuiSlider-root {
     color: #0000;
   }
 }
 
-.dark{
-  .comparison-page.slider-site{
-      .MuiSlider-markLabel{
-        color: #fff;
-      }
+.dark {
+  .comparison-page.slider-site {
+    .MuiSlider-markLabel {
+      color: #fff;
+    }
   }
+}
+
+/* Score labels styling */
+.score-label {
+  background: transparent !important;
+  border: none !important;
+}
+
+.score-label div {
+  transition: all 0.2s ease;
+}
+
+.score-label:hover div {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.9) !important;
 }
