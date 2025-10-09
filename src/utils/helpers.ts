@@ -38,7 +38,11 @@ export const RandomKey = (length = 5) => {
 //   }
 // };
 
-export const scoreToColor = (score: number | null | undefined): string => {
+export const scoreToColor = (
+  score: number | null | undefined,
+  countryAllSelectedIndicators: number,
+  selectedCountryIndicatorHave: number,
+): string => {
   if (typeof score !== "number" || isNaN(score)) {
     return "#00000000";
   }
@@ -57,7 +61,8 @@ export const scoreToColor = (score: number | null | undefined): string => {
     r = Math.round(255 * (1 - (clampedScore - 50) / 50));
   }
 
-  const alpha = Math.round(255 * (clampedScore / 100));
+  const alpha =
+    (selectedCountryIndicatorHave / countryAllSelectedIndicators) * 100;
 
   const toHex = (c: number): string => {
     const hex = c.toString(16);
@@ -86,8 +91,6 @@ export const createSlug = (title: string) => {
 };
 
 export const formatLargeNumber = (number: number) => {
-  console.log(number, 5555);
-
   const formatter = new Intl.NumberFormat("en-US", {
     notation: "compact",
     maximumFractionDigits: 2,

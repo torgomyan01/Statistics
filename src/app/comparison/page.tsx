@@ -235,27 +235,56 @@ function Page() {
       const two = list.find((x) => x.country_code === isoTwo);
       const metricName = one?.Indicator_name || two?.Indicator_name || code;
 
-      const scoreOne = one?.object[selectedScoreYear].split(".")[0] ?? 0;
-      const scoreTwo = two?.object[selectedScoreYear].split(".")[0] ?? 0;
+      const rawOne = one?.object?.[selectedScoreYear];
+      const rawTwo = two?.object?.[selectedScoreYear];
 
-      // Format numbers with comma separators
-      const formatNumber = (num: string | number) => {
-        const numValue = typeof num === "string" ? parseInt(num) : num;
-        return isNaN(numValue) ? "" : numValue.toLocaleString("en-US");
+      const parseNumber = (v: any): number => {
+        if (v === undefined || v === null || v === "") {
+          return 0;
+        }
+        const s = String(v).trim();
+        const normalized = s.replace(/\s+/g, "");
+        // Normalize cases like "- 0", "0", "-0"
+        if (normalized === "0" || normalized === "-0") {
+          return 0;
+        }
+        const n = parseFloat(normalized);
+        return isNaN(n) ? 0 : n;
       };
 
-      const formattedScoreOne = formatNumber(scoreOne);
-      const formattedScoreTwo = formatNumber(scoreTwo);
+      const formatScoreDisplay = (num: number): string => {
+        const rounded = Math.round(num * 100) / 100;
+        if (rounded === 0) {
+          return "-";
+        }
+        const isInteger = Math.abs(rounded % 1) < Number.EPSILON;
+        if (isInteger) {
+          return Math.trunc(rounded).toLocaleString("en-US");
+        }
+        // keep two decimals (e.g., 5.30)
+        const [intPart, fracPart] = rounded.toFixed(2).split(".");
+        return `${parseInt(intPart, 10).toLocaleString("en-US")}.${fracPart}`;
+      };
 
-      const v1 =
-        r1 !== null
-          ? `${formattedScoreOne} (${r1}/${countWithRank})`
-          : `${formattedScoreOne} -`;
+      const scoreOneVal = parseNumber(rawOne);
+      const scoreTwoVal = parseNumber(rawTwo);
+      const displayOne = formatScoreDisplay(scoreOneVal);
+      const displayTwo = formatScoreDisplay(scoreTwoVal);
 
-      const v2 =
-        r2 !== null
-          ? `${formattedScoreTwo} (${r2}/${countWithRank})`
-          : `${formattedScoreTwo} -`;
+      const formatCell = (
+        display: string,
+        num: number,
+        rank: number | null,
+      ) => {
+        const isDash = display === "-" || num === 0;
+        if (!rank || isDash) {
+          return "-";
+        }
+        return `${display} (${rank}/${countWithRank})`;
+      };
+
+      const v1 = formatCell(displayOne, scoreOneVal, r1);
+      const v2 = formatCell(displayTwo, scoreTwoVal, r2);
 
       rows.push({ metric: metricName, v1, v2, r1, r2 });
     });
@@ -385,9 +414,9 @@ function Page() {
                         <TableCell
                           className={clsx("text-gray-900 dark:text-white", {
                             "bg-green-200 dark:bg-green-800":
-                              typeof row.v1 === "string" && row.v1.includes("-")
-                                ? false
-                                : (row.r2 || 0) > (row.r1 || 0),
+                              row.r1 !== null &&
+                              (row.r2 === null ||
+                                (row.r1 as number) < (row.r2 as number)),
                           })}
                         >
                           {row.v1}
@@ -395,9 +424,9 @@ function Page() {
                         <TableCell
                           className={clsx("text-gray-900 dark:text-white", {
                             "bg-green-200 dark:bg-green-800":
-                              typeof row.v2 === "string" && row.v2.includes("-")
-                                ? false
-                                : (row.r2 || 0) < (row.r1 || 0),
+                              row.r2 !== null &&
+                              (row.r1 === null ||
+                                (row.r2 as number) < (row.r1 as number)),
                           })}
                         >
                           {row.v2}

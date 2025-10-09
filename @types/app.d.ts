@@ -14,6 +14,7 @@ declare interface IStateSiteInfo {
     selectedCountry: string | null;
     selectedScoreYear: number;
     selectedCountryIso: string | null;
+    selectedGroup: string[];
   };
 }
 

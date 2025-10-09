@@ -1,4 +1,10 @@
-import { GeoJSON, MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import {
+  GeoJSON,
+  MapContainer,
+  TileLayer,
+  Marker,
+  useMapEvents,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Feature, Geometry } from "geojson";
 import L from "leaflet";
@@ -79,14 +85,41 @@ function Home() {
   }
 
   const getCountryColor = useCallback(
-    (countryName: string) => {
+    (countryName: string, countryIso: string) => {
       if (indicators) {
-        return PrintColor(countryName);
+        return PrintColor(countryName, countryIso);
       }
       return "#0000";
     },
     [indicators],
   );
+
+  const getCountryScore = (countryName: string, countryIso: string) => {
+    if (!indicators) {
+      return "0";
+    }
+
+    let activeCount = 0;
+    const yearKey = `${indicatorCode.selectedScoreYear}_score`;
+
+    indicators.forEach((indicatorList) => {
+      const entry = indicatorList.find(
+        (c) =>
+          (c as any).country_code === countryIso ||
+          c.country_name === countryName,
+      );
+      const val = entry?.object?.[yearKey];
+      const hasValue = val !== undefined && val !== null && val !== "";
+
+      if (hasValue) {
+        activeCount += 1;
+      }
+    });
+
+    const ratio = `${activeCount} / ${indicatorCode.selectedIndicator.length}`;
+
+    return ratio;
+  };
 
   const avgScoreByCountryName = useMemo(() => {
     if (!indicators) {
@@ -112,9 +145,12 @@ function Home() {
     return map;
   }, [indicators, indicatorCode.selectedScoreYear]);
 
-  function PrintColor(countryName: string) {
+  function PrintColor(countryName: string, countryIso: string) {
     const avg = avgScoreByCountryName.get(countryName) || 0;
-    return scoreToColor(avg);
+
+    const countryScore = getCountryScore(countryName, countryIso).split("/");
+
+    return scoreToColor(avg, +countryScore[0], +countryScore[1]);
   }
 
   const countryStyle = (feature: CountryFeature) => {
@@ -127,7 +163,10 @@ function Home() {
       (feature as any).properties?.iso_a3_eh === selectedCountryCodeHover;
 
     return {
-      fillColor: getCountryColor(feature.properties.name),
+      fillColor: getCountryColor(
+        feature.properties.name,
+        feature.properties.iso_a3_eh,
+      ),
 
       color: isHovered ? "black" : isSelected ? "black" : "black",
       weight: isHovered ? 3 : isSelected ? 3 : 1,
@@ -141,6 +180,7 @@ function Home() {
   const [selectedCountryCodeHover, setSelectedCountryCodeHover] =
     useState<string>("");
   const [showScoreLabels, setShowScoreLabels] = useState<boolean>(true);
+  const [filteredScoreLabels, setFilteredScoreLabels] = useState<any[]>([]);
 
   const onEachCountry = useCallback(
     (country: CountryFeature, layer: L.Layer) => {
@@ -148,32 +188,6 @@ function Home() {
       const countryIco = country.properties.iso_a3_eh;
 
       // Calculate score for this country
-      const getCountryScore = (countryName: string, countryIso: string) => {
-        if (!indicators) {
-          return "0";
-        }
-
-        let activeCount = 0;
-        const yearKey = `${indicatorCode.selectedScoreYear}_score`;
-
-        indicators.forEach((indicatorList) => {
-          const entry = indicatorList.find(
-            (c) =>
-              (c as any).country_code === countryIso ||
-              c.country_name === countryName,
-          );
-          const val = entry?.object?.[yearKey];
-          const hasValue = val !== undefined && val !== null && val !== "";
-
-          if (hasValue) {
-            activeCount += 1;
-          }
-        });
-
-        const ratio = `${activeCount} / ${indicatorCode.selectedIndicator.length}`;
-
-        return ratio;
-      };
 
       const countryScore = getCountryScore(countryName, countryIco);
       const popupContent = `
@@ -364,6 +378,87 @@ function Home() {
     const labels: any[] = [];
     const yearKey = `${indicatorCode.selectedScoreYear}_score`;
 
+    // Helpers to compute centroids for GeoJSON polygons
+    const ringArea = (coords: number[][]): number => {
+      let sum = 0;
+      for (let i = 0, len = coords.length, j = len - 1; i < len; j = i++) {
+        const xi = coords[i][0];
+        const yi = coords[i][1];
+        const xj = coords[j][0];
+        const yj = coords[j][1];
+        sum += xj * yi - xi * yj;
+      }
+      return sum / 2;
+    };
+
+    const ringCentroid = (
+      coords: number[][],
+    ): { cx: number; cy: number; area: number } => {
+      const area = ringArea(coords);
+      if (area === 0) {
+        // Fallback to average if area degenerate
+        let sx = 0;
+        let sy = 0;
+        coords.forEach((p) => {
+          sx += p[0];
+          sy += p[1];
+        });
+        const n = coords.length || 1;
+        return { cx: sx / n, cy: sy / n, area: 0 };
+      }
+      let cx = 0;
+      let cy = 0;
+      for (let i = 0, len = coords.length, j = len - 1; i < len; j = i++) {
+        const xi = coords[i][0];
+        const yi = coords[i][1];
+        const xj = coords[j][0];
+        const yj = coords[j][1];
+        const cross = xj * yi - xi * yj;
+        cx += (xi + xj) * cross;
+        cy += (yi + yj) * cross;
+      }
+      const factor = 1 / (6 * area);
+      return { cx: cx * factor, cy: cy * factor, area: Math.abs(area) };
+    };
+
+    const polygonCentroid = (
+      polygon: number[][][],
+    ): { lat: number; lng: number } => {
+      const outer = polygon[0];
+      const { cx, cy } = ringCentroid(outer);
+      return { lat: cy, lng: cx };
+    };
+
+    const multiPolygonCentroid = (
+      multi: number[][][][],
+    ): { lat: number; lng: number } => {
+      let weightedCx = 0;
+      let weightedCy = 0;
+      let totalArea = 0;
+      multi.forEach((poly) => {
+        const outer = poly[0];
+        const rc = ringCentroid(outer);
+        weightedCx += rc.cx * rc.area;
+        weightedCy += rc.cy * rc.area;
+        totalArea += rc.area;
+      });
+      if (totalArea === 0) {
+        const first = multi[0]?.[0] || [];
+        if (first.length > 0) {
+          let sx = 0;
+          let sy = 0;
+          first.forEach((p) => {
+            sx += p[0];
+            sy += p[1];
+          });
+          const n = first.length;
+          return { lat: sy / n, lng: sx / n };
+        }
+        return { lat: 0, lng: 0 };
+      }
+      return { lat: weightedCy / totalArea, lng: weightedCx / totalArea };
+    };
+
     features.forEach((country: any) => {
       const countryName = country.properties.name;
       const countryIso = country.properties.iso_a3_eh;
@@ -387,49 +482,25 @@ function Home() {
 
       // Only show labels for countries with data
       if (activeCount > 0) {
-        // Get country center coordinates
-        const coordinates = country.geometry.coordinates;
+        // Compute centroid for country geometry
+        const geometry = country.geometry;
         let centerLat = 0;
         let centerLng = 0;
 
-        if (country.geometry.type === "Polygon") {
-          // Calculate center of polygon
-          const coords = coordinates[0];
-          let sumLat = 0;
-          let sumLng = 0;
-          coords.forEach((coord: number[]) => {
-            sumLng += coord[0];
-            sumLat += coord[1];
-          });
-          centerLng = sumLng / coords.length;
-          centerLat = sumLat / coords.length;
-        } else if (country.geometry.type === "MultiPolygon") {
-          // Calculate center of first polygon
-          const coords = coordinates[0][0];
-          let sumLat = 0;
-          let sumLng = 0;
-          coords.forEach((coord: number[]) => {
-            sumLng += coord[0];
-            sumLat += coord[1];
-          });
-          centerLng = sumLng / coords.length;
-          centerLat = sumLat / coords.length;
+        if (geometry.type === "Polygon") {
+          const centroid = polygonCentroid(geometry.coordinates as any);
+          centerLat = centroid.lat;
+          centerLng = centroid.lng;
+        } else if (geometry.type === "MultiPolygon") {
+          const centroid = multiPolygonCentroid(geometry.coordinates as any);
+          centerLat = centroid.lat;
+          centerLng = centroid.lng;
         }
 
         // Create custom icon for score label
         const scoreIcon = L.divIcon({
           html: `
-            <div style="
-              background: rgba(0, 0, 0, 0.7);
-              color: white;
-              padding: 2px 6px;
-              border-radius: 4px;
-              font-size: 11px;
-              font-weight: bold;
-              text-align: center;
-              border: 1px solid white;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            ">
+            <div style="">
               ${activeCount} / ${indicatorCode.selectedIndicator.length}
             </div>
           `,
@@ -442,6 +513,8 @@ function Home() {
           position: [centerLat, centerLng],
           icon: scoreIcon,
           countryName,
+          activeCount,
+          totalSelected: indicatorCode.selectedIndicator.length,
           score: `${activeCount} / ${indicatorCode.selectedIndicator.length}`,
         });
       }
@@ -454,6 +527,58 @@ function Home() {
     indicatorCode.selectedIndicator.length,
     features,
   ]);
+
+  // Collision controller: keep only one label per small pixel grid cell at current zoom
+  const CollisionController: React.FC<{
+    labels: any[];
+    onFiltered: (labels: any[]) => void;
+  }> = ({ labels, onFiltered }) => {
+    const map = useMapEvents({
+      load: () => recompute(),
+      zoomend: () => recompute(),
+      moveend: () => recompute(),
+      resize: () => recompute(),
+    });
+
+    const chooseBetter = (a: any, b: any) => {
+      // Prefer higher activeCount, then by country name for stability
+      if ((a.activeCount || 0) !== (b.activeCount || 0)) {
+        return (a.activeCount || 0) > (b.activeCount || 0) ? a : b;
+      }
+      return (a.countryName || "") <= (b.countryName || "") ? a : b;
+    };
+
+    const recompute = () => {
+      if (!map || !labels || labels.length === 0) {
+        onFiltered(labels || []);
+        return;
+      }
+      const z = (map as any).getZoom?.() ?? 3;
+      // Scale grid size with zoom for nicer behavior
+      const thresholdPx = Math.max(18, 42 - z * 2); // between ~18..42 px
+      const chosen = new Map<string, any>();
+      labels.forEach((label) => {
+        const [lat, lng] = label.position as [number, number];
+        const pt = (map as any).latLngToLayerPoint({ lat, lng });
+        const keyX = Math.round(pt.x / thresholdPx);
+        const keyY = Math.round(pt.y / thresholdPx);
+        const key = `${keyX},${keyY}`;
+        const existing = chosen.get(key);
+        if (!existing) {
+          chosen.set(key, label);
+        } else {
+          chosen.set(key, chooseBetter(existing, label));
+        }
+      });
+      onFiltered(Array.from(chosen.values()));
+    };
+
+    useEffect(() => {
+      recompute();
+    }, [labels]);
+
+    return null;
+  };
 
   // removed debug logs
 
@@ -517,24 +642,19 @@ function Home() {
               ref={geoJsonRef as any}
             />
 
+            <CollisionController
+              labels={countryScoreLabels}
+              onFiltered={setFilteredScoreLabels}
+            />
+
             {/* Score labels for all countries */}
             {showScoreLabels &&
-              countryScoreLabels.map((label, index) => (
+              filteredScoreLabels.map((label, index) => (
                 <Marker
                   key={`score-label-${index}`}
                   position={label.position}
                   icon={label.icon}
-                >
-                  <Popup>
-                    <div>
-                      <strong>{label.countryName}</strong>
-                      <br />
-                      Average Score: {label.score}
-                      <br />
-                      Year: {indicatorCode.selectedScoreYear}
-                    </div>
-                  </Popup>
-                </Marker>
+                />
               ))}
           </MapContainer>
           <SelectCountry allCountry={allCountry} />

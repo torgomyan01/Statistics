@@ -64,13 +64,10 @@ $green: #1e4a2f;
 .score-label {
   background: transparent !important;
   border: none !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
 }
 
 .score-label div {
   transition: all 0.2s ease;
-}
-
-.score-label:hover div {
-  transform: scale(1.1);
-  background: rgba(0, 0, 0, 0.9) !important;
 }

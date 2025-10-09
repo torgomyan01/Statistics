@@ -6,6 +6,7 @@ interface IInterface {
   selectedScoreYear: number;
   selectedCountry: string | null;
   selectedCountryIso: string | null;
+  selectedGroup: string[];
 }
 
 const initialState: IInterface = {
@@ -14,6 +15,7 @@ const initialState: IInterface = {
   selectedScoreYear: 2020,
   selectedCountry: null,
   selectedCountryIso: null,
+  selectedGroup: [],
 };
 
 export const siteInfo = createSlice({
@@ -45,6 +47,9 @@ export const siteInfo = createSlice({
     setSelectCountryIso: (state, action: PayloadAction<string | null>) => {
       state.selectedCountryIso = action.payload;
     },
+    setSelectGroup: (state, action: PayloadAction<string[]>) => {
+      state.selectedGroup = action.payload;
+    },
   },
 });
 
@@ -56,5 +61,6 @@ export const {
   setSelectCountry,
   setSelectCountryIso,
   setAllIndicators,
+  setSelectGroup,
 } = siteInfo.actions;
 export default siteInfo.reducer;
