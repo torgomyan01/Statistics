@@ -19,6 +19,7 @@ import SelectCountry from "@/components/pages/home/select-country";
 import { setSelectCountry, setSelectCountryIso } from "@/redux/info";
 import { ActionGetManyInfo } from "@/app/actions/industry/get-many";
 import MainTemplate from "@/components/common/main-template/main-template";
+import { Spinner } from "@heroui/react";
 
 declare interface ICountryData {
   country_name: string;
@@ -48,6 +49,7 @@ function Home() {
   const indicatorCode = useSelector((state: IStateSiteInfo) => state.siteInfo);
 
   const [indicators, setIndicators] = useState<ICountryData[][] | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const geoJsonRef = useRef<L.GeoJSON<any> | null>(null);
 
   const data: any = countriesData;
@@ -66,22 +68,26 @@ function Home() {
   });
 
   useEffect(() => {
+    setIsLoading(true);
     FindAllInfo();
   }, [indicatorCode]);
 
   async function FindAllInfo() {
     const codes = indicatorCode.selectedIndicator;
-
-    const res = await ActionGetManyInfo(codes);
-    const all = (res.data || []) as ICountryData[];
-    // Group by indicator_code for compatibility with existing logic
-    const byCode = new Map<string, ICountryData[]>();
-    all.forEach((row) => {
-      const arr = byCode.get(row.indicator_code) || [];
-      arr.push(row);
-      byCode.set(row.indicator_code, arr);
-    });
-    setIndicators(Array.from(byCode.values()));
+    try {
+      const res = await ActionGetManyInfo(codes);
+      const all = (res.data || []) as ICountryData[];
+      // Group by indicator_code for compatibility with existing logic
+      const byCode = new Map<string, ICountryData[]>();
+      all.forEach((row) => {
+        const arr = byCode.get(row.indicator_code) || [];
+        arr.push(row);
+        byCode.set(row.indicator_code, arr);
+      });
+      setIndicators(Array.from(byCode.values()));
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const getCountryColor = useCallback(
@@ -554,12 +560,30 @@ function Home() {
         return;
       }
       const z = (map as any).getZoom?.() ?? 3;
+
+      // If zoomed out too far, hide labels entirely to avoid clutter and overflow
+      if (z <= 2) {
+        onFiltered([]);
+        return;
+      }
+
       // Scale grid size with zoom for nicer behavior
       const thresholdPx = Math.max(18, 42 - z * 2); // between ~18..42 px
       const chosen = new Map<string, any>();
+      const size = (map as any).getSize?.();
       labels.forEach((label) => {
         const [lat, lng] = label.position as [number, number];
         const pt = (map as any).latLngToLayerPoint({ lat, lng });
+
+        // Skip labels that are out of the current viewport
+        if (size) {
+          const outOfView =
+            pt.x < 0 || pt.y < 0 || pt.x > size.x || pt.y > size.y;
+          if (outOfView) {
+            return;
+          }
+        }
+
         const keyX = Math.round(pt.x / thresholdPx);
         const keyY = Math.round(pt.y / thresholdPx);
         const key = `${keyX},${keyY}`;
@@ -570,7 +594,27 @@ function Home() {
           chosen.set(key, chooseBetter(existing, label));
         }
       });
-      onFiltered(Array.from(chosen.values()));
+      let result = Array.from(chosen.values());
+
+      // Cap the number of labels depending on zoom to keep them within country areas visually
+      const maxByZoom = (zoom: number) => {
+        if (zoom <= 3) {
+          return 60;
+        }
+        if (zoom <= 4) {
+          return 140;
+        }
+        if (zoom <= 5) {
+          return 260;
+        }
+        return 400;
+      };
+      const maxAllowed = maxByZoom(z);
+      if (result.length > maxAllowed) {
+        result = result.slice(0, maxAllowed);
+      }
+
+      onFiltered(result);
     };
 
     useEffect(() => {
@@ -679,6 +723,12 @@ function Home() {
               )}
             </button>
           </div>
+
+          {isLoading && (
+            <div className="absolute top-[140px] left-4 z-[100000]">
+              <Spinner color="secondary" className="dark:text-white" />
+            </div>
+          )}
 
           {indicatorCode.selectedCountry ? (
             <div className="w-[400px] dark:text-white absolute top-4 right-4 z-[100000] rounded-xl cursor-default transition-colors duration-500">

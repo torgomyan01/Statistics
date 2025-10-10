@@ -43,16 +43,17 @@ export const scoreToColor = (
   countryAllSelectedIndicators: number,
   selectedCountryIndicatorHave: number,
 ): string => {
+  // Fallback to fully transparent if score is invalid
   if (typeof score !== "number" || isNaN(score)) {
-    return "#00000000";
+    return "#0000";
   }
 
   const clampedScore = Math.max(0, Math.min(100, score));
 
+  // Red-to-Green gradient
   let r = 0;
   let g = 0;
   const b = 0;
-
   if (clampedScore <= 50) {
     r = 255;
     g = Math.round(255 * (clampedScore / 50));
@@ -62,14 +63,9 @@ export const scoreToColor = (
   }
 
   const alpha =
-    (selectedCountryIndicatorHave / countryAllSelectedIndicators) * 100;
+    (countryAllSelectedIndicators / selectedCountryIndicatorHave) * 100;
 
-  const toHex = (c: number): string => {
-    const hex = c.toString(16);
-    return hex.length === 1 ? `0${hex}` : hex;
-  };
-
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}${toHex(alpha)}`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
 export const createSlug = (title: string) => {

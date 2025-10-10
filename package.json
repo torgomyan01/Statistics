@@ -9,7 +9,7 @@
     "dev": "next dev --turbopack",
     "socket": "node ws-server.js",
     "build": "prisma generate && next build",
-    "start": "next start -p 3003",
+    "start": "next start -p 3008",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write ."
