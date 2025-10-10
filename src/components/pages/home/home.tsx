@@ -4,6 +4,7 @@ import {
   TileLayer,
   Marker,
   useMapEvents,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Feature, Geometry } from "geojson";
@@ -16,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatLargeNumber, scoreToColor } from "@/utils/helpers";
 import { useDispatch, useSelector } from "react-redux";
 import SelectCountry from "@/components/pages/home/select-country";
-import { setSelectCountry, setSelectCountryIso } from "@/redux/info";
+import { setSelectCountryIso } from "@/redux/info";
 import { ActionGetManyInfo } from "@/app/actions/industry/get-many";
 import MainTemplate from "@/components/common/main-template/main-template";
 import { Spinner } from "@heroui/react";
@@ -38,11 +39,7 @@ interface CountryFeature extends Feature {
   geometry: Geometry;
 }
 
-// Format numbers with comma separators
-const formatNumber = (num: string | number) => {
-  const numValue = typeof num === "string" ? parseInt(num) : num;
-  return isNaN(numValue) ? "" : numValue.toLocaleString("en-US");
-};
+// number formatting handled by helpers.formatLargeNumber where needed
 
 function Home() {
   const dispatch = useDispatch();
@@ -161,9 +158,10 @@ function Home() {
 
   const countryStyle = (feature: CountryFeature) => {
     const isSelected =
-      indicatorCode.selectedCountry &&
-      indicatorCode.selectedCountry.toLowerCase() ===
-        feature.properties.name.toLowerCase();
+      selectedCountries.includes(feature.properties.name) ||
+      (hoverCountryName &&
+        hoverCountryName.toLowerCase() ===
+          feature.properties.name.toLowerCase());
     const isHovered =
       selectedCountryCodeHover &&
       (feature as any).properties?.iso_a3_eh === selectedCountryCodeHover;
@@ -174,8 +172,8 @@ function Home() {
         feature.properties.iso_a3_eh,
       ),
 
-      color: isHovered ? "black" : isSelected ? "black" : "black",
-      weight: isHovered ? 3 : isSelected ? 3 : 1,
+      color: isHovered || isSelected ? "black" : "black",
+      weight: isHovered || isSelected ? 3 : 1,
 
       opacity: 1,
       fillOpacity: 0.7,
@@ -187,51 +185,73 @@ function Home() {
     useState<string>("");
   const [showScoreLabels, setShowScoreLabels] = useState<boolean>(true);
   const [filteredScoreLabels, setFilteredScoreLabels] = useState<any[]>([]);
+  const [panCountryName, setPanCountryName] = useState<string | null>(null);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [hoverCountryName, setHoverCountryName] = useState<string | null>(null);
+
+  const PanToCountry: React.FC<{ countryName: string | null }> = ({
+    countryName,
+  }) => {
+    const map = useMap();
+    useEffect(() => {
+      if (!countryName) {
+        return;
+      }
+      try {
+        const feature = (countriesData as any).features.find(
+          (f: any) => f.properties?.name === countryName,
+        );
+        if (!feature) {
+          return;
+        }
+        const layer = (L as any).geoJSON(feature);
+        const bounds = layer.getBounds();
+        if (bounds && bounds.isValid()) {
+          (map as any).fitBounds(bounds, {
+            padding: [40, 40],
+            maxZoom: 5,
+            animate: true,
+          });
+        } else {
+          const center = layer.getBounds().getCenter();
+          (map as any).setView(center, 4, { animate: true });
+        }
+      } finally {
+        // clear after panning to avoid repeated fits
+        setPanCountryName(null);
+      }
+    }, [countryName]);
+    return null;
+  };
 
   const onEachCountry = useCallback(
     (country: CountryFeature, layer: L.Layer) => {
       const countryName = country.properties.name;
       const countryIco = country.properties.iso_a3_eh;
 
-      // Calculate score for this country
-
-      const countryScore = getCountryScore(countryName, countryIco);
-      const popupContent = `
-        <div style="min-width: 200px;">
-          <h3 style="margin: 0 0 8px 0; font-weight: bold; color: #333;">${countryName}</h3>
-          <p style="margin: 4px 0; font-size: 14px; color: #666;">
-            <strong>Indicators:</strong> ${countryScore}
-          </p>
-          <p style="margin: 4px 0; font-size: 12px; color: #888;">
-            Year: ${indicatorCode.selectedScoreYear}
-          </p>
-        </div>
-      `;
-
-      layer.bindPopup(popupContent);
-
       layer.on({
         mouseover: () => {
           setSelectedCountryCodeHover(countryIco);
           setSelectedCountryHover(countryName);
+          setHoverCountryName(countryName);
         },
         mouseout: () => {
           setSelectedCountryCodeHover("");
           setSelectedCountryHover("");
+          setHoverCountryName(null);
         },
 
         click: () => {
           dispatch(setSelectCountryIso(countryIco));
-
-          if (indicatorCode.selectedCountry) {
-            if (indicatorCode.selectedCountry === countryName) {
-              dispatch(setSelectCountry(null));
-            } else {
-              dispatch(setSelectCountry(countryName));
+          setSelectedCountries((prev) => {
+            if (prev.includes(countryName)) {
+              return prev.filter((n) => n !== countryName);
             }
-          } else {
-            dispatch(setSelectCountry(countryName));
-          }
+            if (prev.length < 2) {
+              return [...prev, countryName];
+            }
+            return [prev[1], countryName];
+          });
         },
       });
     },
@@ -253,78 +273,87 @@ function Home() {
     indicatorCode.selectedCountry,
   ]);
 
-  function CalcActiveIndicator() {
-    // Count how many selected indicators have a value for the selected country
+  // Build quick-lookup maps for area and population by ISO3 code
+  const populationByCode = useMemo(() => {
+    const by: Record<string, any> = {};
+    (people_info as any[]).forEach((row: any) => {
+      if (row["Indicator Name"] === "Population, total") {
+        by[row["Country Code"]] = row;
+      }
+    });
+    return by;
+  }, []);
+
+  const areaByCode = useMemo(() => {
+    const by: Record<string, any> = {};
+    (people_info as any[]).forEach((row: any) => {
+      if (row["Indicator Name"] === "Surface area (sq. km)") {
+        by[row["Country Code"]] = row;
+      }
+    });
+    return by;
+  }, []);
+
+  function computeCountryStats(countryName: string) {
+    if (!indicators) {
+      return {
+        activeIndicator: `0 / ${indicatorCode.selectedIndicator.length}`,
+        activeScore: "0",
+        maxScore: undefined as
+          | { Indicator_name: string; rank?: number; rankCount?: number }
+          | undefined,
+      };
+    }
     let activeCount = 0;
     let sumScores = 0;
-
-    // Determine the "best" indicator for the selected country and compute its rank among countries with values
-    let bestIndicatorEntry: any = null; // ICountryData for selected country
-    let bestIndicatorRank = 0;
+    let bestIndicatorEntry: any = null;
+    let bestIndicatorRank: number | null = null;
     let bestIndicatorCount = 0;
-
     const yearKey = `${indicatorCode.selectedScoreYear}_score`;
-    const countryIso = indicatorCode.selectedCountryIso;
 
-    if (indicators && countryIso) {
-      indicators.forEach((indicatorList) => {
-        // Find this country in the indicator list
-        const entry = indicatorList.find(
-          (c) =>
-            (c as any).country_code === countryIso ||
-            c.country_name === indicatorCode.selectedCountry,
-        );
-        const val = entry?.object?.[yearKey];
-        const hasValue = val !== undefined && val !== null && val !== "";
+    indicators.forEach((indicatorList) => {
+      const entry = indicatorList.find((c) => c.country_name === countryName);
+      const val = entry?.object?.[yearKey];
+      const hasValue = val !== undefined && val !== null && val !== "";
+      if (hasValue) {
+        activeCount += 1;
+        sumScores += +val;
 
-        if (hasValue) {
-          activeCount += 1;
-          sumScores += +val;
-
-          // Build valid list and rank
-          const valid = indicatorList.filter((row) => {
-            const v = row.object?.[yearKey];
-            return v !== undefined && v !== null && v !== "";
+        const valid = indicatorList.filter((row) => {
+          const v = row.object?.[yearKey];
+          return v !== undefined && v !== null && v !== "";
+        });
+        if (valid.length) {
+          const isDescending =
+            (valid[0]?.object?.descending || "TRUE") === "TRUE";
+          valid.sort((a, b) => {
+            const av = +a.object[yearKey];
+            const bv = +b.object[yearKey];
+            return isDescending ? bv - av : av - bv;
           });
-          if (valid.length) {
-            const isDescending =
-              (valid[0]?.object?.descending || "TRUE") === "TRUE";
-            valid.sort((a, b) => {
-              const av = +a.object[yearKey];
-              const bv = +b.object[yearKey];
-              return isDescending ? bv - av : av - bv;
-            });
-            const idx = valid.findIndex(
-              (r) =>
-                (r as any).country_code === countryIso ||
-                r.country_name === indicatorCode.selectedCountry,
-            );
-            const rank = idx >= 0 ? idx + 1 : null;
-
-            // Choose best by rank when comparable, otherwise by score
-            const better = () => {
-              if (!bestIndicatorEntry) {
-                return true;
-              }
-              if (rank !== null && bestIndicatorRank !== null) {
-                return rank < bestIndicatorRank; // lower rank is better
-              }
-              const bestVal = +bestIndicatorEntry.object[yearKey];
-              return +val > bestVal; // fallback by score
-            };
-
-            if (rank !== null && better()) {
-              bestIndicatorEntry = entry;
-              bestIndicatorRank = rank;
-              bestIndicatorCount = valid.length;
+          const idx = valid.findIndex((r) => r.country_name === countryName);
+          const rank = idx >= 0 ? idx + 1 : null;
+          const better = () => {
+            if (!bestIndicatorEntry) {
+              return true;
             }
+            if (rank !== null && bestIndicatorRank !== null) {
+              return rank < bestIndicatorRank;
+            }
+            const bestVal = +bestIndicatorEntry.object[yearKey];
+            return +val > bestVal;
+          };
+          if (rank !== null && better()) {
+            bestIndicatorEntry = entry;
+            bestIndicatorRank = rank;
+            bestIndicatorCount = valid.length;
           }
         }
-      });
-    }
+      }
+    });
 
     const avg = activeCount
-      ? formatNumber((sumScores / activeCount).toFixed(0))
+      ? formatLargeNumber(Number((sumScores / activeCount).toFixed(0)))
       : "0";
     const maxScore = bestIndicatorEntry
       ? {
@@ -341,39 +370,27 @@ function Home() {
     };
   }
 
-  const populationByCode = useMemo(() => {
-    const map: Record<string, any> = {};
-    (people_info as any[]).forEach((row: any) => {
-      if (row["Indicator Name"] === "Population, total") {
-        map[row["Country Code"]] = row;
-      }
-    });
-    return map;
-  }, []);
+  // const populationByCode = useMemo(() => {
+  //   const map: Record<string, any> = {};
+  //   (people_info as any[]).forEach((row: any) => {
+  //     if (row["Indicator Name"] === "Population, total") {
+  //       map[row["Country Code"]] = row;
+  //     }
+  //   });
+  //   return map;
+  // }, []);
 
-  const areaByCode = useMemo(() => {
-    const map: Record<string, any> = {};
-    (people_info as any[]).forEach((row: any) => {
-      if (row["Indicator Name"] === "Surface area (sq. km)") {
-        map[row["Country Code"]] = row;
-      }
-    });
-    return map;
-  }, []);
+  // const areaByCode = useMemo(() => {
+  //   const map: Record<string, any> = {};
+  //   (people_info as any[]).forEach((row: any) => {
+  //     if (row["Indicator Name"] === "Surface area (sq. km)") {
+  //       map[row["Country Code"]] = row;
+  //     }
+  //   });
+  //   return map;
+  // }, []);
 
-  const selectedIsoCode = indicatorCode.selectedCountryIso || "";
-
-  const Population: any = useMemo(
-    () => populationByCode[selectedIsoCode] || {},
-    [populationByCode, selectedIsoCode],
-  );
-
-  const area: any = useMemo(
-    () => areaByCode[selectedIsoCode] || {},
-    [areaByCode, selectedIsoCode],
-  );
-
-  const getCalcScore = CalcActiveIndicator();
+  // keep utilities for potential future use in country detail panels
 
   // Create score labels for all countries
   const countryScoreLabels = useMemo(() => {
@@ -384,86 +401,11 @@ function Home() {
     const labels: any[] = [];
     const yearKey = `${indicatorCode.selectedScoreYear}_score`;
 
-    // Helpers to compute centroids for GeoJSON polygons
-    const ringArea = (coords: number[][]): number => {
-      let sum = 0;
-      for (let i = 0, len = coords.length, j = len - 1; i < len; j = i++) {
-        const xi = coords[i][0];
-        const yi = coords[i][1];
-        const xj = coords[j][0];
-        const yj = coords[j][1];
-        sum += xj * yi - xi * yj;
-      }
-      return sum / 2;
-    };
+    // Removed centroid helpers in favor of Leaflet bounds center
 
-    const ringCentroid = (
-      coords: number[][],
-    ): { cx: number; cy: number; area: number } => {
-      const area = ringArea(coords);
-      if (area === 0) {
-        // Fallback to average if area degenerate
-        let sx = 0;
-        let sy = 0;
-        coords.forEach((p) => {
-          sx += p[0];
-          sy += p[1];
-        });
-        const n = coords.length || 1;
-        return { cx: sx / n, cy: sy / n, area: 0 };
-      }
-      let cx = 0;
-      let cy = 0;
-      for (let i = 0, len = coords.length, j = len - 1; i < len; j = i++) {
-        const xi = coords[i][0];
-        const yi = coords[i][1];
-        const xj = coords[j][0];
-        const yj = coords[j][1];
-        const cross = xj * yi - xi * yj;
-        cx += (xi + xj) * cross;
-        cy += (yi + yj) * cross;
-      }
-      const factor = 1 / (6 * area);
-      return { cx: cx * factor, cy: cy * factor, area: Math.abs(area) };
-    };
+    // ringArea remains for potential future geometric utilities
 
-    const polygonCentroid = (
-      polygon: number[][][],
-    ): { lat: number; lng: number } => {
-      const outer = polygon[0];
-      const { cx, cy } = ringCentroid(outer);
-      return { lat: cy, lng: cx };
-    };
-
-    const multiPolygonCentroid = (
-      multi: number[][][][],
-    ): { lat: number; lng: number } => {
-      let weightedCx = 0;
-      let weightedCy = 0;
-      let totalArea = 0;
-      multi.forEach((poly) => {
-        const outer = poly[0];
-        const rc = ringCentroid(outer);
-        weightedCx += rc.cx * rc.area;
-        weightedCy += rc.cy * rc.area;
-        totalArea += rc.area;
-      });
-      if (totalArea === 0) {
-        const first = multi[0]?.[0] || [];
-        if (first.length > 0) {
-          let sx = 0;
-          let sy = 0;
-          first.forEach((p) => {
-            sx += p[0];
-            sy += p[1];
-          });
-          const n = first.length;
-          return { lat: sy / n, lng: sx / n };
-        }
-        return { lat: 0, lng: 0 };
-      }
-      return { lat: weightedCy / totalArea, lng: weightedCx / totalArea };
-    };
+    // centroid helpers no longer used after switching to Leaflet bounds center
 
     features.forEach((country: any) => {
       const countryName = country.properties.name;
@@ -488,20 +430,12 @@ function Home() {
 
       // Only show labels for countries with data
       if (activeCount > 0) {
-        // Compute centroid for country geometry
-        const geometry = country.geometry;
-        let centerLat = 0;
-        let centerLng = 0;
-
-        if (geometry.type === "Polygon") {
-          const centroid = polygonCentroid(geometry.coordinates as any);
-          centerLat = centroid.lat;
-          centerLng = centroid.lng;
-        } else if (geometry.type === "MultiPolygon") {
-          const centroid = multiPolygonCentroid(geometry.coordinates as any);
-          centerLat = centroid.lat;
-          centerLng = centroid.lng;
-        }
+        // Use Leaflet bounds for robust center and to compute on-screen size later
+        const countryLayer = (L as any).geoJSON(country as any);
+        const bounds = countryLayer.getBounds();
+        const boundsCenter = bounds.getCenter();
+        const centerLat = boundsCenter.lat;
+        const centerLng = boundsCenter.lng;
 
         // Create custom icon for score label
         const scoreIcon = L.divIcon({
@@ -522,6 +456,11 @@ function Home() {
           activeCount,
           totalSelected: indicatorCode.selectedIndicator.length,
           score: `${activeCount} / ${indicatorCode.selectedIndicator.length}`,
+          // store geographic bounds (for pixel-size filtering later)
+          bbox: [
+            [bounds.getSouth(), bounds.getWest()],
+            [bounds.getNorth(), bounds.getEast()],
+          ],
         });
       }
     });
@@ -584,6 +523,33 @@ function Home() {
           }
         }
 
+        // Hide labels when on-screen bbox smaller than label icon footprint to avoid overflow
+        if (label.bbox) {
+          const [[south, west], [north, east]] = label.bbox as [
+            [number, number],
+            [number, number],
+          ];
+          const sw = (map as any).latLngToLayerPoint({ lat: south, lng: west });
+          const ne = (map as any).latLngToLayerPoint({ lat: north, lng: east });
+          const bboxWidthPx = Math.abs(ne.x - sw.x);
+          const bboxHeightPx = Math.abs(sw.y - ne.y);
+
+          // derive label size from icon or fallback
+          const iconSize = (label.icon &&
+            (label.icon as any).options?.iconSize) || [40, 20];
+          const [iconW, iconH] = iconSize as [number, number];
+
+          // add a little padding for safety
+          const fitsHorizontally = bboxWidthPx >= iconW + 6;
+          const fitsVertically = bboxHeightPx >= iconH + 6;
+          if (!fitsHorizontally || !fitsVertically) {
+            return;
+          }
+
+          // attach current on-screen area to prioritize larger visible countries
+          (label as any).pixelArea = bboxWidthPx * bboxHeightPx;
+        }
+
         const keyX = Math.round(pt.x / thresholdPx);
         const keyY = Math.round(pt.y / thresholdPx);
         const key = `${keyX},${keyY}`;
@@ -591,7 +557,19 @@ function Home() {
         if (!existing) {
           chosen.set(key, label);
         } else {
-          chosen.set(key, chooseBetter(existing, label));
+          // Prefer higher activeCount, then larger on-screen area, then name
+          const a = existing as any;
+          const b = label as any;
+          if ((a.activeCount || 0) !== (b.activeCount || 0)) {
+            chosen.set(
+              key,
+              (a.activeCount || 0) > (b.activeCount || 0) ? a : b,
+            );
+          } else if ((a.pixelArea || 0) !== (b.pixelArea || 0)) {
+            chosen.set(key, (a.pixelArea || 0) > (b.pixelArea || 0) ? a : b);
+          } else {
+            chosen.set(key, chooseBetter(existing, label));
+          }
         }
       });
       let result = Array.from(chosen.values());
@@ -609,6 +587,8 @@ function Home() {
         }
         return 400;
       };
+      // Sort by on-screen pixel area (desc) so smaller countries drop first on zoom-out
+      result.sort((a: any, b: any) => (b.pixelArea || 0) - (a.pixelArea || 0));
       const maxAllowed = maxByZoom(z);
       if (result.length > maxAllowed) {
         result = result.slice(0, maxAllowed);
@@ -626,38 +606,38 @@ function Home() {
 
   // removed debug logs
 
-  const hoverStats = useMemo(() => {
-    if (!indicators || !selectedCountryHover) {
-      return {
-        activeIndicator: `0 / ${indicatorCode.selectedIndicator.length}`,
-        activeScore: "0",
-      };
-    }
-    let sumScores = 0;
-    let countActive = 0;
-    indicators.forEach((indicatorList) => {
-      const found = indicatorList.find((c) =>
-        c.country_name.includes(selectedCountryHover),
-      );
-      const score = found?.object?.[`${indicatorCode.selectedScoreYear}_score`];
-      if (score !== undefined && score !== "" && score !== null) {
-        sumScores += +score;
-        countActive += 1;
-      }
-    });
-    const avg = countActive
-      ? formatNumber((sumScores / countActive).toFixed(0))
-      : "0";
-    return {
-      activeIndicator: `${countActive} / ${indicatorCode.selectedIndicator.length}`,
-      activeScore: avg,
-    };
-  }, [
-    indicators,
-    selectedCountryHover,
-    indicatorCode.selectedIndicator.length,
-    indicatorCode.selectedScoreYear,
-  ]);
+  // const hoverStats = useMemo(() => {
+  //   if (!indicators || !selectedCountryHover) {
+  //     return {
+  //       activeIndicator: `0 / ${indicatorCode.selectedIndicator.length}`,
+  //       activeScore: "0",
+  //     };
+  //   }
+  //   let sumScores = 0;
+  //   let countActive = 0;
+  //   indicators.forEach((indicatorList) => {
+  //     const found = indicatorList.find((c) =>
+  //       c.country_name.includes(selectedCountryHover),
+  //     );
+  //     const score = found?.object?.[`${indicatorCode.selectedScoreYear}_score`];
+  //     if (score !== undefined && score !== "" && score !== null) {
+  //       sumScores += +score;
+  //       countActive += 1;
+  //     }
+  //   });
+  //   const avg = countActive
+  //     ? formatNumber((sumScores / countActive).toFixed(0))
+  //     : "0";
+  //   return {
+  //     activeIndicator: `${countActive} / ${indicatorCode.selectedIndicator.length}`,
+  //     activeScore: avg,
+  //   };
+  // }, [
+  //   indicators,
+  //   selectedCountryHover,
+  //   indicatorCode.selectedIndicator.length,
+  //   indicatorCode.selectedScoreYear,
+  // ]);
 
   return (
     <MainTemplate>
@@ -670,8 +650,10 @@ function Home() {
             worldCopyJump={true}
             maxBounds={worldBounds}
             minZoom={2}
+            maxZoom={5}
             maxBoundsViscosity={1.0}
           >
+            <PanToCountry countryName={panCountryName} />
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -701,7 +683,10 @@ function Home() {
                 />
               ))}
           </MapContainer>
-          <SelectCountry allCountry={allCountry} />
+          <SelectCountry
+            allCountry={allCountry}
+            onSelectCountry={(name) => setPanCountryName(name)}
+          />
 
           {/* Toggle button for score labels */}
           <div className="absolute top-[80px] left-3 z-[1000]">
@@ -730,88 +715,133 @@ function Home() {
             </div>
           )}
 
-          {indicatorCode.selectedCountry ? (
-            <div className="w-[400px] dark:text-white absolute top-4 right-4 z-[100000] rounded-xl cursor-default transition-colors duration-500">
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl dark:shadow-2xl">
-                <i
-                  className="fa-solid fa-xmark absolute top-[-10px] right-[-10px] w-8 h-8 rounded-full flex justify-center items-center cursor-pointer
-               bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-xl hover:shadow-2xl transition-all"
-                  onClick={() => dispatch(setSelectCountry(null))}
-                />
-                <h4 className="font-bold mb-2 text-gray-900 dark:text-white">
-                  {indicatorCode.selectedCountry}
-                </h4>
-
-                <ul className="text-gray-700 dark:text-gray-300">
-                  <li className="text-[14px]">
-                    <b>Area:</b>{" "}
-                    {formatLargeNumber(area[indicatorCode.selectedScoreYear])}{" "}
-                    sq km
-                  </li>
-                  <li className="text-[14px]">
-                    <b>Population:</b>{" "}
-                    {formatLargeNumber(
-                      Population[indicatorCode.selectedScoreYear],
-                    )}
-                  </li>
-                  <li className="text-[14px]">
-                    <b>Number of indicators with data:</b>{" "}
-                    {getCalcScore.activeIndicator}
-                  </li>
-                  <li className="text-[14px]">
-                    <b>Average score:</b>{" "}
-                    {getCalcScore.activeScore === "NaN"
-                      ? "-"
-                      : getCalcScore.activeScore}
-                  </li>
-                  <li className="text-[14px] flex-js-s gap-2">
-                    <b>Best:</b>{" "}
-                    {getCalcScore.maxScore?.Indicator_name
-                      ? `${getCalcScore.maxScore.rank || "-"} ${getCalcScore.maxScore.Indicator_name}`
-                      : "-"}
-                  </li>
-                </ul>
+          <div className="w-[420px] dark:text-white absolute top-4 right-4 z-[100000] rounded-xl cursor-default transition-colors duration-500">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl dark:shadow-2xl">
+              <h4 className="font-bold mb-3 text-gray-900 dark:text-white">
+                Selected countries
+              </h4>
+              <div className="flex flex-col gap-3">
+                {[0, 1].map((idx) => {
+                  const name = selectedCountries[idx];
+                  const stats = name ? computeCountryStats(name) : null;
+                  // find ISO3 for area/pop
+                  const feature: any = (countriesData as any).features.find(
+                    (f: any) => f.properties?.name === name,
+                  );
+                  const iso3 = feature?.properties?.iso_a3_eh;
+                  return (
+                    <div
+                      key={`sel-${idx}`}
+                      className="rounded-lg bg-gray-50 dark:bg-gray-700"
+                    >
+                      <div className="flex-jsb-c gap-2 px-3 py-2">
+                        <span className="text-[14px]">{name || "-"}</span>
+                        {name ? (
+                          <i
+                            className="fa-solid fa-xmark w-6 h-6 rounded-full flex justify-center items-center cursor-pointer bg-white dark:bg-gray-600 text-red-600 dark:text-red-400 shadow hover:shadow-md"
+                            onClick={() =>
+                              setSelectedCountries((prev) =>
+                                prev.filter((n) => n !== name),
+                              )
+                            }
+                          />
+                        ) : null}
+                      </div>
+                      {name && (
+                        <ul className="px-3 pb-3 text-gray-700 dark:text-gray-300">
+                          <li className="text-[14px]">
+                            <b>Area:</b>{" "}
+                            {formatLargeNumber(
+                              (areaByCode as any)[iso3]?.[
+                                indicatorCode.selectedScoreYear
+                              ] || 0,
+                            )}{" "}
+                            sq km
+                          </li>
+                          <li className="text-[14px]">
+                            <b>Population:</b>{" "}
+                            {formatLargeNumber(
+                              (populationByCode as any)[iso3]?.[
+                                indicatorCode.selectedScoreYear
+                              ] || 0,
+                            )}
+                          </li>
+                          <li className="text-[14px]">
+                            <b>Number of indicators with data:</b>{" "}
+                            {stats?.activeIndicator}
+                          </li>
+                          <li className="text-[14px]">
+                            <b>Average score:</b>{" "}
+                            {stats?.activeScore === "NaN"
+                              ? "-"
+                              : stats?.activeScore}
+                          </li>
+                          <li className="text-[14px] flex-js-s gap-2">
+                            <b>Best:</b>{" "}
+                            {stats?.maxScore?.Indicator_name
+                              ? `${stats?.maxScore.rank || "-"} ${stats?.maxScore.Indicator_name}`
+                              : "-"}
+                          </li>
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-
-              {selectedCountryCodeHover && (
-                <ul className="mt-2 rounded-[12px] p-4 bg-white dark:bg-gray-800 shadow-xl dark:shadow-2xl text-gray-700 dark:text-gray-300">
-                  <li className="text-[14px]">
-                    <b>Hover Country:</b> {selectedCountryHover}
-                  </li>
-                  <li className="text-[14px]">
-                    <b>Selected Year:</b> {indicatorCode.selectedScoreYear}
-                  </li>
-                  <li className="text-[14px]">
-                    <b>Area:</b>{" "}
-                    {formatLargeNumber(
-                      (areaByCode[selectedCountryCodeHover] || {})[
-                        indicatorCode.selectedScoreYear
-                      ] || 0,
-                    )}{" "}
-                    sq km
-                  </li>
-                  <li className="text-[14px]">
-                    <b>Population:</b>{" "}
-                    {formatLargeNumber(
-                      (populationByCode[selectedCountryCodeHover] || {})[
-                        indicatorCode.selectedScoreYear
-                      ] || 0,
-                    )}
-                  </li>
-                  <li className="text-[14px]">
-                    <b>Number of indicators with data:</b>{" "}
-                    {hoverStats.activeIndicator}
-                  </li>
-                  <li className="text-[14px]">
-                    <b>Average score:</b>{" "}
-                    {hoverStats.activeScore === "NaN"
-                      ? "-"
-                      : hoverStats.activeScore}
-                  </li>
-                </ul>
-              )}
             </div>
-          ) : null}
+
+            <ul className="mt-3 rounded-[12px] p-4 bg-white dark:bg-gray-800 shadow-xl dark:shadow-2xl text-gray-700 dark:text-gray-300">
+              <li className="text-[14px]">
+                <b>Hover Country:</b> {hoverCountryName || "-"}
+              </li>
+              <li className="text-[14px]">
+                <b>Selected Year:</b> {indicatorCode.selectedScoreYear}
+              </li>
+              {hoverCountryName &&
+                (() => {
+                  const feature: any = (countriesData as any).features.find(
+                    (f: any) => f.properties?.name === hoverCountryName,
+                  );
+                  const iso3 = feature?.properties?.iso_a3_eh;
+                  const stats = computeCountryStats(hoverCountryName);
+                  return (
+                    <>
+                      <li className="text-[14px]">
+                        <b>Area:</b>{" "}
+                        {formatLargeNumber(
+                          (areaByCode as any)[iso3]?.[
+                            indicatorCode.selectedScoreYear
+                          ] || 0,
+                        )}{" "}
+                        sq km
+                      </li>
+                      <li className="text-[14px]">
+                        <b>Population:</b>{" "}
+                        {formatLargeNumber(
+                          (populationByCode as any)[iso3]?.[
+                            indicatorCode.selectedScoreYear
+                          ] || 0,
+                        )}
+                      </li>
+                      <li className="text-[14px]">
+                        <b>Number of indicators with data:</b>{" "}
+                        {stats.activeIndicator}
+                      </li>
+                      <li className="text-[14px]">
+                        <b>Average score:</b>{" "}
+                        {stats.activeScore === "NaN" ? "-" : stats.activeScore}
+                      </li>
+                      <li className="text-[14px] flex-js-s gap-2">
+                        <b>Best:</b>{" "}
+                        {stats.maxScore?.Indicator_name
+                          ? `${stats.maxScore.rank || "-"} ${stats.maxScore.Indicator_name}`
+                          : "-"}
+                      </li>
+                    </>
+                  );
+                })()}
+            </ul>
+          </div>
           <RightInfo />
         </div>
       )}

@@ -301,6 +301,38 @@ function Page() {
     ranksByIndicator,
   ]);
 
+  const { winsOne, winsTwo } = useMemo(() => {
+    let w1 = 0;
+    let w2 = 0;
+    comparisonRows.forEach((row) => {
+      const leftGreen =
+        (row.r1 !== null &&
+          row.r2 !== null &&
+          row.v1 !== "-" &&
+          row.v2 !== "-" &&
+          (row.r1 as number) < (row.r2 as number)) ||
+        (row.v1 !== "-" &&
+          (row.v2 === "-" || row.r2 === null) &&
+          row.r1 !== null);
+      const rightGreen =
+        (row.r2 !== null &&
+          row.r1 !== null &&
+          row.v1 !== "-" &&
+          row.v2 !== "-" &&
+          (row.r2 as number) < (row.r1 as number)) ||
+        (row.v2 !== "-" &&
+          (row.v1 === "-" || row.r1 === null) &&
+          row.r2 !== null);
+      if (leftGreen) {
+        w1 += 1;
+      }
+      if (rightGreen) {
+        w2 += 1;
+      }
+    });
+    return { winsOne: w1, winsTwo: w2 };
+  }, [comparisonRows]);
+
   return (
     <MainTemplate>
       <div className="w-full h-full overflow-y-auto bg-gray-100 dark:bg-gray-900 transition-colors duration-500 font-inter">
@@ -391,15 +423,29 @@ function Page() {
                     </TableColumn>
                     <TableColumn
                       key="country1"
-                      className="text-gray-900 dark:text-white"
+                      className={clsx("text-gray-900 dark:text-white", {
+                        "bg-green-200 dark:bg-green-800": winsOne > winsTwo,
+                      })}
                     >
-                      {countryOneName}
+                      <div className="flex items-center justify-center gap-2">
+                        <span>{countryOneName}</span>
+                        <span className="text-green-600 font-semibold">
+                          ({winsOne})
+                        </span>
+                      </div>
                     </TableColumn>
                     <TableColumn
                       key="country2"
-                      className="text-gray-900 dark:text-white"
+                      className={clsx("text-gray-900 dark:text-white", {
+                        "bg-green-200 dark:bg-green-800": winsTwo > winsOne,
+                      })}
                     >
-                      {countryTwoName}
+                      <div className="flex items-center justify-center gap-2">
+                        <span>{countryTwoName}</span>
+                        <span className="text-green-600 font-semibold">
+                          ({winsTwo})
+                        </span>
+                      </div>
                     </TableColumn>
                   </TableHeader>
                   <TableBody>
@@ -412,22 +458,38 @@ function Page() {
                           {row.metric}
                         </TableCell>
                         <TableCell
-                          className={clsx("text-gray-900 dark:text-white", {
-                            "bg-green-200 dark:bg-green-800":
-                              row.r1 !== null &&
-                              (row.r2 === null ||
-                                (row.r1 as number) < (row.r2 as number)),
-                          })}
+                          className={clsx(
+                            "text-gray-900 dark:text-white text-center",
+                            {
+                              "bg-green-200 dark:bg-green-800":
+                                (row.r1 !== null &&
+                                  row.r2 !== null &&
+                                  row.v1 !== "-" &&
+                                  row.v2 !== "-" &&
+                                  (row.r1 as number) < (row.r2 as number)) ||
+                                (row.v1 !== "-" &&
+                                  (row.v2 === "-" || row.r2 === null) &&
+                                  row.r1 !== null),
+                            },
+                          )}
                         >
                           {row.v1}
                         </TableCell>
                         <TableCell
-                          className={clsx("text-gray-900 dark:text-white", {
-                            "bg-green-200 dark:bg-green-800":
-                              row.r2 !== null &&
-                              (row.r1 === null ||
-                                (row.r2 as number) < (row.r1 as number)),
-                          })}
+                          className={clsx(
+                            "text-gray-900 dark:text-white text-center",
+                            {
+                              "bg-green-200 dark:bg-green-800":
+                                (row.r2 !== null &&
+                                  row.r1 !== null &&
+                                  row.v1 !== "-" &&
+                                  row.v2 !== "-" &&
+                                  (row.r2 as number) < (row.r1 as number)) ||
+                                (row.v2 !== "-" &&
+                                  (row.v1 === "-" || row.r1 === null) &&
+                                  row.r2 !== null),
+                            },
+                          )}
                         >
                           {row.v2}
                         </TableCell>

@@ -1,20 +1,18 @@
 import { Autocomplete, AutocompleteItem, Avatar } from "@heroui/react";
-import { useDispatch, useSelector } from "react-redux";
-import { setSelectCountry } from "@/redux/info";
+import { useState } from "react";
 
 interface IThisProps {
   allCountry: any;
+  onSelectCountry?: (countryName: string) => void;
 }
 
-function SelectCountry({ allCountry }: IThisProps) {
-  const dispatch = useDispatch();
+function SelectCountry({ allCountry, onSelectCountry }: IThisProps) {
+  const [selected, setSelected] = useState<string | null>(null);
 
-  const indicatorCode = useSelector(
-    (state: IStateSiteInfo) => state.siteInfo.selectedCountry,
-  );
-
-  function OnChangeCountry(country: string) {
-    dispatch(setSelectCountry(country));
+  function OnChangeCountry(country: any) {
+    const name = typeof country === "string" ? country : String(country || "");
+    setSelected(name || null);
+    onSelectCountry?.(name);
   }
 
   return (
@@ -23,7 +21,7 @@ function SelectCountry({ allCountry }: IThisProps) {
         className="max-w-xs h-[]"
         label="Find Country"
         radius="sm"
-        selectedKey={indicatorCode}
+        selectedKey={selected || undefined}
         onSelectionChange={OnChangeCountry}
       >
         {allCountry
