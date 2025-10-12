@@ -530,17 +530,17 @@ function Home() {
           </div>
 
           {(isLoading || !mapLoaded) && (
-            <div className="absolute top-[140px] left-4 z-[100000]">
+            <div className="absolute top-[140px] left-4 z-[1000]">
               <Spinner color="secondary" className="dark:text-white" />
             </div>
           )}
 
-          <div className="w-[420px] dark:text-white absolute top-4 right-4 z-[100000] rounded-xl cursor-default transition-colors duration-500">
+          <div className="w-[calc(100%-30px)] md:w-[420px] dark:text-white absolute top-[80px] md:top-4 right-4 z-[1000] rounded-xl cursor-default transition-colors duration-500">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl dark:shadow-2xl">
               <h4 className="font-bold mb-3 text-gray-900 dark:text-white">
                 Selected countries
               </h4>
-              <div className="flex flex-col gap-3">
+              <div className="flex md:flex-col gap-3">
                 {[0, 1].map((idx) => {
                   const name = selectedCountries[idx];
                   const stats = name ? computeCountryStats(name) : null;
@@ -552,7 +552,7 @@ function Home() {
                   return (
                     <div
                       key={`sel-${idx}`}
-                      className="rounded-lg bg-gray-50 dark:bg-gray-700"
+                      className="rounded-lg bg-gray-50 dark:bg-gray-700 w-full"
                     >
                       <div className="flex-jsb-c gap-2 px-3 py-2">
                         <span className="text-[14px]">{name || "-"}</span>
@@ -611,7 +611,7 @@ function Home() {
             </div>
 
             {hoverCountryName && (
-              <ul className="mt-3 rounded-[12px] p-4 bg-white dark:bg-gray-800 shadow-xl dark:shadow-2xl text-gray-700 dark:text-gray-300">
+              <ul className="mt-3 rounded-[12px] p-4 bg-white dark:bg-gray-800 shadow-xl dark:shadow-2xl text-gray-700 dark:text-gray-300 md:block hidden">
                 <li className="text-[14px]">
                   <b>Hover Country:</b> {hoverCountryName || "-"}
                 </li>

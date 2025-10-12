@@ -127,7 +127,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
   );
 
   const content = (
-    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative z-[1000] p-0">
+    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative md:z-[1000] p-0">
       <div className="px-4 pt-4 h-full overflow-y-auto flex-js-s flex-col">
         <div
           className={clsx(
