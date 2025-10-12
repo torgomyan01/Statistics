@@ -51,6 +51,12 @@ $green: #1e4a2f;
   .MuiSlider-root {
     color: #0000;
   }
+
+  .MuiSlider-markLabel {
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
 }
 
 .dark {

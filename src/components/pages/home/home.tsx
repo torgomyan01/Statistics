@@ -1,11 +1,4 @@
-import {
-  GeoJSON,
-  MapContainer,
-  TileLayer,
-  Marker,
-  useMapEvents,
-  useMap,
-} from "react-leaflet";
+import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Feature, Geometry } from "geojson";
 import L from "leaflet";
@@ -46,8 +39,10 @@ function Home() {
   const indicatorCode = useSelector((state: IStateSiteInfo) => state.siteInfo);
 
   const [indicators, setIndicators] = useState<ICountryData[][] | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const geoJsonRef = useRef<L.GeoJSON<any> | null>(null);
+
+  console.log(isLoading);
 
   const data: any = countriesData;
   const { features } = data;
@@ -67,11 +62,12 @@ function Home() {
   useEffect(() => {
     setIsLoading(true);
     FindAllInfo();
-  }, [indicatorCode]);
+  }, [indicatorCode.selectedIndicator, indicatorCode.selectedScoreYear]);
 
   async function FindAllInfo() {
     const codes = indicatorCode.selectedIndicator;
     try {
+      setMapLoaded(false); // Reset map loading state when fetching new data
       const res = await ActionGetManyInfo(codes);
       const all = (res.data || []) as ICountryData[];
       // Group by indicator_code for compatibility with existing logic
@@ -82,6 +78,9 @@ function Home() {
         byCode.set(row.indicator_code, arr);
       });
       setIndicators(Array.from(byCode.values()));
+    } catch (error) {
+      // Set empty indicators on error to prevent infinite loading
+      setIndicators([]);
     } finally {
       setIsLoading(false);
     }
@@ -184,10 +183,10 @@ function Home() {
   const [selectedCountryCodeHover, setSelectedCountryCodeHover] =
     useState<string>("");
   const [showScoreLabels, setShowScoreLabels] = useState<boolean>(true);
-  const [filteredScoreLabels, setFilteredScoreLabels] = useState<any[]>([]);
   const [panCountryName, setPanCountryName] = useState<string | null>(null);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [hoverCountryName, setHoverCountryName] = useState<string | null>(null);
+  const [mapLoaded, setMapLoaded] = useState<boolean>(false);
 
   const PanToCountry: React.FC<{ countryName: string | null }> = ({
     countryName,
@@ -221,6 +220,32 @@ function Home() {
         setPanCountryName(null);
       }
     }, [countryName]);
+    return null;
+  };
+
+  // Component to handle map loading state
+  const MapLoadingHandler: React.FC = () => {
+    const map = useMap();
+    useEffect(() => {
+      const handleMapLoad = () => {
+        setMapLoaded(true);
+      };
+
+      // Listen for map load events
+      map.on("load", handleMapLoad);
+      map.on("tileload", handleMapLoad);
+
+      // Also set loaded if map is already ready
+      if (map.getContainer()) {
+        setMapLoaded(true);
+      }
+
+      return () => {
+        map.off("load", handleMapLoad);
+        map.off("tileload", handleMapLoad);
+      };
+    }, [map]);
+
     return null;
   };
 
@@ -392,217 +417,21 @@ function Home() {
 
   // keep utilities for potential future use in country detail panels
 
-  // Create score labels for all countries
-  const countryScoreLabels = useMemo(() => {
-    if (!indicators || !features) {
-      return [];
-    }
+  // Create score labels for all countries (commented out for performance)
+  // const countryScoreLabels = useMemo(() => {
+  //   if (!indicators || !features) {
+  //     return [];
+  //   }
+  //   // ... implementation
+  // }, [indicators, indicatorCode.selectedScoreYear, indicatorCode.selectedIndicator.length, features]);
 
-    const labels: any[] = [];
-    const yearKey = `${indicatorCode.selectedScoreYear}_score`;
-
-    // Removed centroid helpers in favor of Leaflet bounds center
-
-    // ringArea remains for potential future geometric utilities
-
-    // centroid helpers no longer used after switching to Leaflet bounds center
-
-    features.forEach((country: any) => {
-      const countryName = country.properties.name;
-      const countryIso = country.properties.iso_a3_eh;
-
-      // Calculate score for this country
-      let activeCount = 0;
-
-      indicators.forEach((indicatorList) => {
-        const entry = indicatorList.find(
-          (c) =>
-            (c as any).country_code === countryIso ||
-            c.country_name === countryName,
-        );
-        const val = entry?.object?.[yearKey];
-        const hasValue = val !== undefined && val !== null && val !== "";
-
-        if (hasValue) {
-          activeCount += 1;
-        }
-      });
-
-      // Only show labels for countries with data
-      if (activeCount > 0) {
-        // Use Leaflet bounds for robust center and to compute on-screen size later
-        const countryLayer = (L as any).geoJSON(country as any);
-        const bounds = countryLayer.getBounds();
-        const boundsCenter = bounds.getCenter();
-        const centerLat = boundsCenter.lat;
-        const centerLng = boundsCenter.lng;
-
-        // Create custom icon for score label
-        const scoreIcon = L.divIcon({
-          html: `
-            <div style="">
-              ${activeCount} / ${indicatorCode.selectedIndicator.length}
-            </div>
-          `,
-          className: "score-label",
-          iconSize: [40, 20],
-          iconAnchor: [20, 10],
-        });
-
-        labels.push({
-          position: [centerLat, centerLng],
-          icon: scoreIcon,
-          countryName,
-          activeCount,
-          totalSelected: indicatorCode.selectedIndicator.length,
-          score: `${activeCount} / ${indicatorCode.selectedIndicator.length}`,
-          // store geographic bounds (for pixel-size filtering later)
-          bbox: [
-            [bounds.getSouth(), bounds.getWest()],
-            [bounds.getNorth(), bounds.getEast()],
-          ],
-        });
-      }
-    });
-
-    return labels;
-  }, [
-    indicators,
-    indicatorCode.selectedScoreYear,
-    indicatorCode.selectedIndicator.length,
-    features,
-  ]);
-
-  // Collision controller: keep only one label per small pixel grid cell at current zoom
-  const CollisionController: React.FC<{
-    labels: any[];
-    onFiltered: (labels: any[]) => void;
-  }> = ({ labels, onFiltered }) => {
-    const map = useMapEvents({
-      load: () => recompute(),
-      zoomend: () => recompute(),
-      moveend: () => recompute(),
-      resize: () => recompute(),
-    });
-
-    const chooseBetter = (a: any, b: any) => {
-      // Prefer higher activeCount, then by country name for stability
-      if ((a.activeCount || 0) !== (b.activeCount || 0)) {
-        return (a.activeCount || 0) > (b.activeCount || 0) ? a : b;
-      }
-      return (a.countryName || "") <= (b.countryName || "") ? a : b;
-    };
-
-    const recompute = () => {
-      if (!map || !labels || labels.length === 0) {
-        onFiltered(labels || []);
-        return;
-      }
-      const z = (map as any).getZoom?.() ?? 3;
-
-      // If zoomed out too far, hide labels entirely to avoid clutter and overflow
-      if (z <= 2) {
-        onFiltered([]);
-        return;
-      }
-
-      // Scale grid size with zoom for nicer behavior
-      const thresholdPx = Math.max(18, 42 - z * 2); // between ~18..42 px
-      const chosen = new Map<string, any>();
-      const size = (map as any).getSize?.();
-      labels.forEach((label) => {
-        const [lat, lng] = label.position as [number, number];
-        const pt = (map as any).latLngToLayerPoint({ lat, lng });
-
-        // Skip labels that are out of the current viewport
-        if (size) {
-          const outOfView =
-            pt.x < 0 || pt.y < 0 || pt.x > size.x || pt.y > size.y;
-          if (outOfView) {
-            return;
-          }
-        }
-
-        // Hide labels when on-screen bbox smaller than label icon footprint to avoid overflow
-        if (label.bbox) {
-          const [[south, west], [north, east]] = label.bbox as [
-            [number, number],
-            [number, number],
-          ];
-          const sw = (map as any).latLngToLayerPoint({ lat: south, lng: west });
-          const ne = (map as any).latLngToLayerPoint({ lat: north, lng: east });
-          const bboxWidthPx = Math.abs(ne.x - sw.x);
-          const bboxHeightPx = Math.abs(sw.y - ne.y);
-
-          // derive label size from icon or fallback
-          const iconSize = (label.icon &&
-            (label.icon as any).options?.iconSize) || [40, 20];
-          const [iconW, iconH] = iconSize as [number, number];
-
-          // add a little padding for safety
-          const fitsHorizontally = bboxWidthPx >= iconW + 6;
-          const fitsVertically = bboxHeightPx >= iconH + 6;
-          if (!fitsHorizontally || !fitsVertically) {
-            return;
-          }
-
-          // attach current on-screen area to prioritize larger visible countries
-          (label as any).pixelArea = bboxWidthPx * bboxHeightPx;
-        }
-
-        const keyX = Math.round(pt.x / thresholdPx);
-        const keyY = Math.round(pt.y / thresholdPx);
-        const key = `${keyX},${keyY}`;
-        const existing = chosen.get(key);
-        if (!existing) {
-          chosen.set(key, label);
-        } else {
-          // Prefer higher activeCount, then larger on-screen area, then name
-          const a = existing as any;
-          const b = label as any;
-          if ((a.activeCount || 0) !== (b.activeCount || 0)) {
-            chosen.set(
-              key,
-              (a.activeCount || 0) > (b.activeCount || 0) ? a : b,
-            );
-          } else if ((a.pixelArea || 0) !== (b.pixelArea || 0)) {
-            chosen.set(key, (a.pixelArea || 0) > (b.pixelArea || 0) ? a : b);
-          } else {
-            chosen.set(key, chooseBetter(existing, label));
-          }
-        }
-      });
-      let result = Array.from(chosen.values());
-
-      // Cap the number of labels depending on zoom to keep them within country areas visually
-      const maxByZoom = (zoom: number) => {
-        if (zoom <= 3) {
-          return 60;
-        }
-        if (zoom <= 4) {
-          return 140;
-        }
-        if (zoom <= 5) {
-          return 260;
-        }
-        return 400;
-      };
-      // Sort by on-screen pixel area (desc) so smaller countries drop first on zoom-out
-      result.sort((a: any, b: any) => (b.pixelArea || 0) - (a.pixelArea || 0));
-      const maxAllowed = maxByZoom(z);
-      if (result.length > maxAllowed) {
-        result = result.slice(0, maxAllowed);
-      }
-
-      onFiltered(result);
-    };
-
-    useEffect(() => {
-      recompute();
-    }, [labels]);
-
-    return null;
-  };
+  // Collision controller: keep only one label per small pixel grid cell at current zoom (commented out for performance)
+  // const CollisionController: React.FC<{
+  //   labels: any[];
+  //   onFiltered: (labels: any[]) => void;
+  // }> = ({ labels, onFiltered }) => {
+  //   // ... implementation
+  // };
 
   // removed debug logs
 
@@ -654,6 +483,7 @@ function Home() {
             maxBoundsViscosity={1.0}
           >
             <PanToCountry countryName={panCountryName} />
+            <MapLoadingHandler />
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -661,27 +491,17 @@ function Home() {
             />
 
             <GeoJSON
-              key={`${indicatorCode.selectedCountry}-${indicatorCode.selectedScoreYear}-${indicatorCode.selectedIndicator.join(",")}`}
+              key={`map-geojson`}
               data={countriesData as any}
               style={countryStyle}
               onEachFeature={onEachCountry as any}
               ref={geoJsonRef as any}
             />
 
-            <CollisionController
+            {/* <CollisionController
               labels={countryScoreLabels}
               onFiltered={setFilteredScoreLabels}
-            />
-
-            {/* Score labels for all countries */}
-            {showScoreLabels &&
-              filteredScoreLabels.map((label, index) => (
-                <Marker
-                  key={`score-label-${index}`}
-                  position={label.position}
-                  icon={label.icon}
-                />
-              ))}
+            /> */}
           </MapContainer>
           <SelectCountry
             allCountry={allCountry}
@@ -709,7 +529,7 @@ function Home() {
             </button>
           </div>
 
-          {isLoading && (
+          {(isLoading || !mapLoaded) && (
             <div className="absolute top-[140px] left-4 z-[100000]">
               <Spinner color="secondary" className="dark:text-white" />
             </div>
@@ -790,57 +610,61 @@ function Home() {
               </div>
             </div>
 
-            <ul className="mt-3 rounded-[12px] p-4 bg-white dark:bg-gray-800 shadow-xl dark:shadow-2xl text-gray-700 dark:text-gray-300">
-              <li className="text-[14px]">
-                <b>Hover Country:</b> {hoverCountryName || "-"}
-              </li>
-              <li className="text-[14px]">
-                <b>Selected Year:</b> {indicatorCode.selectedScoreYear}
-              </li>
-              {hoverCountryName &&
-                (() => {
-                  const feature: any = (countriesData as any).features.find(
-                    (f: any) => f.properties?.name === hoverCountryName,
-                  );
-                  const iso3 = feature?.properties?.iso_a3_eh;
-                  const stats = computeCountryStats(hoverCountryName);
-                  return (
-                    <>
-                      <li className="text-[14px]">
-                        <b>Area:</b>{" "}
-                        {formatLargeNumber(
-                          (areaByCode as any)[iso3]?.[
-                            indicatorCode.selectedScoreYear
-                          ] || 0,
-                        )}{" "}
-                        sq km
-                      </li>
-                      <li className="text-[14px]">
-                        <b>Population:</b>{" "}
-                        {formatLargeNumber(
-                          (populationByCode as any)[iso3]?.[
-                            indicatorCode.selectedScoreYear
-                          ] || 0,
-                        )}
-                      </li>
-                      <li className="text-[14px]">
-                        <b>Number of indicators with data:</b>{" "}
-                        {stats.activeIndicator}
-                      </li>
-                      <li className="text-[14px]">
-                        <b>Average score:</b>{" "}
-                        {stats.activeScore === "NaN" ? "-" : stats.activeScore}
-                      </li>
-                      <li className="text-[14px] flex-js-s gap-2">
-                        <b>Best:</b>{" "}
-                        {stats.maxScore?.Indicator_name
-                          ? `${stats.maxScore.rank || "-"} ${stats.maxScore.Indicator_name}`
-                          : "-"}
-                      </li>
-                    </>
-                  );
-                })()}
-            </ul>
+            {hoverCountryName && (
+              <ul className="mt-3 rounded-[12px] p-4 bg-white dark:bg-gray-800 shadow-xl dark:shadow-2xl text-gray-700 dark:text-gray-300">
+                <li className="text-[14px]">
+                  <b>Hover Country:</b> {hoverCountryName || "-"}
+                </li>
+                <li className="text-[14px]">
+                  <b>Selected Year:</b> {indicatorCode.selectedScoreYear}
+                </li>
+                {hoverCountryName &&
+                  (() => {
+                    const feature: any = (countriesData as any).features.find(
+                      (f: any) => f.properties?.name === hoverCountryName,
+                    );
+                    const iso3 = feature?.properties?.iso_a3_eh;
+                    const stats = computeCountryStats(hoverCountryName);
+                    return (
+                      <>
+                        <li className="text-[14px]">
+                          <b>Area:</b>{" "}
+                          {formatLargeNumber(
+                            (areaByCode as any)[iso3]?.[
+                              indicatorCode.selectedScoreYear
+                            ] || 0,
+                          )}{" "}
+                          sq km
+                        </li>
+                        <li className="text-[14px]">
+                          <b>Population:</b>{" "}
+                          {formatLargeNumber(
+                            (populationByCode as any)[iso3]?.[
+                              indicatorCode.selectedScoreYear
+                            ] || 0,
+                          )}
+                        </li>
+                        <li className="text-[14px]">
+                          <b>Number of indicators with data:</b>{" "}
+                          {stats.activeIndicator}
+                        </li>
+                        <li className="text-[14px]">
+                          <b>Average score:</b>{" "}
+                          {stats.activeScore === "NaN"
+                            ? "-"
+                            : stats.activeScore}
+                        </li>
+                        <li className="text-[14px] flex-js-s gap-2">
+                          <b>Best:</b>{" "}
+                          {stats.maxScore?.Indicator_name
+                            ? `${stats.maxScore.rank || "-"} ${stats.maxScore.Indicator_name}`
+                            : "-"}
+                        </li>
+                      </>
+                    );
+                  })()}
+              </ul>
+            )}
           </div>
           <RightInfo />
         </div>

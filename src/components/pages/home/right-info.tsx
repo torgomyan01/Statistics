@@ -40,7 +40,7 @@ function RightInfo({ absolute = true }: IThisProps) {
   return (
     <div
       className={clsx(
-        "w-full md:w-[80%] m-auto z-[1000] px-4 py-4 slider-site",
+        "w-full md:w-[80%] m-auto z-[1000] px-4 py-2 sm:py-4 slider-site",
         {
           "absolute right-0 left-0 bottom-0": absolute,
           relative: !absolute,
@@ -60,7 +60,7 @@ function RightInfo({ absolute = true }: IThisProps) {
           </div>
         ))}
       </div> */}
-      <div className="w-full slider-right relative z-[1000] mb-4">
+      <div className="w-full slider-right relative z-[1000] sm:mb-4">
         <Slider
           color="primary"
           aria-label="Always visible"

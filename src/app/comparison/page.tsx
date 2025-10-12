@@ -337,7 +337,7 @@ function Page() {
     <MainTemplate>
       <div className="w-full h-full overflow-y-auto bg-gray-100 dark:bg-gray-900 transition-colors duration-500 font-inter">
         <main className="w-full px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl mb-12 border-t-4 border-indigo-600 dark:border-indigo-500 transition-colors duration-500">
+          <div className="bg-white dark:bg-gray-800 pb-0 sm:pb-8 p-4 sm:p-8 rounded-3xl shadow-2xl mb-12 border-t-4 border-indigo-600 dark:border-indigo-500 transition-colors duration-500">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4">
               Select Countries for Comparison
             </h2>
@@ -423,26 +423,30 @@ function Page() {
                     </TableColumn>
                     <TableColumn
                       key="country1"
-                      className={clsx("text-gray-900 dark:text-white", {
-                        "bg-green-200 dark:bg-green-800": winsOne > winsTwo,
-                      })}
+                      className="text-gray-900 dark:text-white"
                     >
                       <div className="flex items-center justify-center gap-2">
                         <span>{countryOneName}</span>
-                        <span className="text-green-600 font-semibold">
+                        <span
+                          className={clsx("font-semibold", {
+                            "text-green-600": winsOne > winsTwo,
+                          })}
+                        >
                           ({winsOne})
                         </span>
                       </div>
                     </TableColumn>
                     <TableColumn
                       key="country2"
-                      className={clsx("text-gray-900 dark:text-white", {
-                        "bg-green-200 dark:bg-green-800": winsTwo > winsOne,
-                      })}
+                      className="text-gray-900 dark:text-white"
                     >
                       <div className="flex items-center justify-center gap-2">
                         <span>{countryTwoName}</span>
-                        <span className="text-green-600 font-semibold">
+                        <span
+                          className={clsx("font-semibold", {
+                            "text-green-600": winsTwo > winsOne,
+                          })}
+                        >
                           ({winsTwo})
                         </span>
                       </div>

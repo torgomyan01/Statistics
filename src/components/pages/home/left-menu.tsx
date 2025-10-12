@@ -127,8 +127,8 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
   );
 
   const content = (
-    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative z-[1000]">
-      <div className="px-4 pt-4 h-full overflow-y-auto">
+    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative z-[1000] p-0">
+      <div className="px-4 pt-4 h-full overflow-y-auto flex-js-s flex-col">
         <div
           className={clsx(
             "flex w-full flex-wrap md:flex-nowrap gap-4 mb-2 relative",
@@ -140,7 +140,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
           <Input
             label="Find Indicator"
             type="text"
-            className="w-full h-12"
+            className="w-full h-12 left-menu-input"
             radius="sm"
             value={inputSearch}
             onValueChange={handleChangeInput}

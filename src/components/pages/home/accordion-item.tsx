@@ -38,6 +38,11 @@ function AccordionItem({ item, index }: IThisProps) {
         setOpenClose(true);
       }
     }
+
+    const getInput = document.querySelector(".left-menu-input");
+    if (getInput) {
+      setOpenClose(true);
+    }
   }, [groupCode, indicatorCode]);
 
   function CheckGroup() {
