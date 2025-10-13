@@ -168,15 +168,23 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
         {inputSearch ? (
           searchResult ? (
             <div className="w-full h-[calc(100%-120px)] overflow-y-auto pr-2">
-              {searchResult.map(
-                (data, index) =>
-                  data && (
-                    <AccordionItem
-                      item={data}
-                      key={`accardion-code-${index}`}
-                      index={index}
-                    />
-                  ),
+              {searchResult.length ? (
+                <>
+                  {searchResult.map(
+                    (data, index) =>
+                      data && (
+                        <AccordionItem
+                          item={data}
+                          key={`accardion-code-${index}`}
+                          index={index}
+                        />
+                      ),
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-[400px] flex-jc-c">
+                  <span className="text-[14px]">No indicator found</span>
+                </div>
               )}
             </div>
           ) : (

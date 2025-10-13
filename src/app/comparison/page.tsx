@@ -336,9 +336,9 @@ function Page() {
   return (
     <MainTemplate>
       <div className="w-full h-full overflow-y-auto bg-gray-100 dark:bg-gray-900 transition-colors duration-500 font-inter">
-        <main className="w-full px-4 sm:px-6 lg:px-8 py-12">
+        <main className="w-full px-4 sm:px-6 lg:px-8 sm:py-12 py-8">
           <div className="bg-white dark:bg-gray-800 pb-0 sm:pb-8 p-4 sm:p-8 rounded-3xl shadow-2xl mb-12 border-t-4 border-indigo-600 dark:border-indigo-500 transition-colors duration-500">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4">
+            <h2 className="text-[16px] sm:text-2xl font-bold mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4">
               Select Countries for Comparison
             </h2>
             <div className="flex flex-col md:flex-row gap-8 justify-around">
@@ -394,8 +394,8 @@ function Page() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl transition-colors duration-500">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4 flex items-center gap-3">
+          <div className="bg-white dark:bg-gray-800 sm:p-8 p-4 rounded-3xl shadow-2xl transition-colors duration-500">
+            <h2 className="text-[16px] sm:text-2xl font-bold mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4 flex items-center gap-3">
               <span>
                 Comparative Statistics ({countryOneName} vs {countryTwoName})
               </span>

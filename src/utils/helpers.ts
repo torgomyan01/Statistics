@@ -64,6 +64,10 @@ export const scoreToColor = (
 
   const alpha =
     (countryAllSelectedIndicators / selectedCountryIndicatorHave) * 100;
+  // If RGB would result in black, return transparent instead
+  if (r === 255 && g === 0 && b === 0) {
+    return "#0000";
+  }
 
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
