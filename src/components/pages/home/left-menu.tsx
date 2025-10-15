@@ -167,7 +167,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
 
         {inputSearch ? (
           searchResult ? (
-            <div className="w-full h-[calc(100%-120px)] overflow-y-auto pr-2">
+            <div className="w-full h-[calc(100%-120px)] overflow-y-auto pr-2 flex-js-s flex-col">
               {searchResult.length ? (
                 <>
                   {searchResult.map(
@@ -195,7 +195,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
         ) : (
           <>
             {filteredRes ? (
-              <div className="w-full h-[calc(100%-120px)] overflow-y-auto">
+              <div className="w-full h-[calc(100%-120px)] overflow-y-auto flex-js-s flex-col">
                 {filteredRes.map(
                   (data, index) =>
                     data && (

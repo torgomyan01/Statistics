@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import ItemIndicator from "@/components/common/item-indicator/item-indicator";
 import { useDispatch, useSelector } from "react-redux";
@@ -22,45 +22,61 @@ function AccordionItem({ item, index }: IThisProps) {
     (state: IStateSiteInfo) => state.siteInfo.selectedGroup,
   );
 
+  // Open on mount if the left menu input exists
   useEffect(() => {
-    if (groupCode.length) {
-      const check = groupCode.some((group: string) => group === groupName);
-      if (check) {
-        setOpenClose(true);
-      }
-    }
-
-    if (indicatorCode.length) {
-      const check = indicatorCode.some((indicator) =>
-        item.some((_i) => _i.indicator_code === indicator),
-      );
-      if (check) {
-        setOpenClose(true);
-      }
-    }
-
     const getInput = document.querySelector(".left-menu-input");
     if (getInput) {
       setOpenClose(true);
     }
-  }, [groupCode, indicatorCode]);
+  }, []);
 
-  function CheckGroup() {
-    const some = groupCode.some((group: string) => group === groupName);
+  // Auto-open when matching group/indicator conditions are met.
+  // Never force-close here so the user can manually close afterwards.
+  useEffect(() => {
+    if (openClose) {
+      return;
+    }
 
-    if (some) {
-      const newGroup = groupCode.filter((group: string) => group !== groupName);
-      dispatch(setSelectGroup(newGroup));
-      setOpenClose(false);
-    } else {
-      const newGroup = [...groupCode, groupName];
-      dispatch(setSelectGroup(newGroup));
+    if (groupCode.some((group: string) => group === groupName)) {
+      setOpenClose(true);
+      return;
+    }
+
+    if (
+      indicatorCode.length &&
+      item.some((_i) =>
+        indicatorCode.some((indicator) => _i.indicator_code === indicator),
+      )
+    ) {
       setOpenClose(true);
     }
-  }
+  }, [groupCode, indicatorCode, item, groupName, openClose]);
+
+  const CheckGroup = useCallback(() => {
+    const isInGroup = groupCode.some((group: string) => group === groupName);
+
+    // If currently open, allow user to close regardless of auto-open reasons
+    if (openClose) {
+      setOpenClose(false);
+      if (isInGroup) {
+        const newGroup = groupCode.filter(
+          (group: string) => group !== groupName,
+        );
+        dispatch(setSelectGroup(newGroup));
+      }
+      return;
+    }
+
+    // If currently closed, open and reflect selection in global state
+    setOpenClose(true);
+    if (!isInGroup) {
+      const newGroup = [...groupCode, groupName];
+      dispatch(setSelectGroup(newGroup));
+    }
+  }, [openClose, groupCode, groupName, dispatch]);
 
   return (
-    <div className="px-2 border-b border-gray-300 dark:border-gray-700 py-2 mb-1">
+    <div className="px-2 border-b border-gray-300 dark:border-gray-700 py-2 mb-1 w-full max-w-full">
       <div
         className={clsx(
           "flex-jsb-c gap-4 text-[14px] cursor-pointer font-semibold dark:text-white",

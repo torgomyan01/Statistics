@@ -305,28 +305,18 @@ function Page() {
     let w1 = 0;
     let w2 = 0;
     comparisonRows.forEach((row) => {
-      const leftGreen =
-        (row.r1 !== null &&
-          row.r2 !== null &&
-          row.v1 !== "-" &&
-          row.v2 !== "-" &&
-          (row.r1 as number) < (row.r2 as number)) ||
-        (row.v1 !== "-" &&
-          (row.v2 === "-" || row.r2 === null) &&
-          row.r1 !== null);
-      const rightGreen =
-        (row.r2 !== null &&
-          row.r1 !== null &&
-          row.v1 !== "-" &&
-          row.v2 !== "-" &&
-          (row.r2 as number) < (row.r1 as number)) ||
-        (row.v2 !== "-" &&
-          (row.v1 === "-" || row.r1 === null) &&
-          row.r2 !== null);
-      if (leftGreen) {
-        w1 += 1;
+      const bothValid =
+        row.v1 !== "-" && row.v2 !== "-" && row.r1 !== null && row.r2 !== null;
+
+      if (!bothValid) {
+        return;
       }
-      if (rightGreen) {
+
+      if ((row.r1 as number) < (row.r2 as number)) {
+        w1 += 1;
+        return;
+      }
+      if ((row.r2 as number) < (row.r1 as number)) {
         w2 += 1;
       }
     });
