@@ -350,7 +350,6 @@ function Home() {
             {/* <MapLoadingHandler />  */}
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               noWrap={true}
             />
 

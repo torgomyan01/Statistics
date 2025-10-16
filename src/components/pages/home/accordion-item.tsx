@@ -40,7 +40,7 @@ function AccordionItem({ item, index }: IThisProps) {
 
     if (
       groupCode.some((group: string) => group === groupName) &&
-      !getInput.value
+      !getInput?.value
     ) {
       setOpenClose(true);
       return;
@@ -51,7 +51,7 @@ function AccordionItem({ item, index }: IThisProps) {
       item.some((_i) =>
         indicatorCode.some((indicator) => _i.indicator_code === indicator),
       ) &&
-      !getInput.value
+      !getInput?.value
     ) {
       setOpenClose(true);
     }
