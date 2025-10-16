@@ -24,8 +24,9 @@ function AccordionItem({ item, index }: IThisProps) {
 
   // Open on mount if the left menu input exists
   useEffect(() => {
-    const getInput = document.querySelector(".left-menu-input");
-    if (getInput) {
+    const getInput: any = document.querySelector(".left-menu-input input");
+
+    if (getInput && getInput.value) {
       setOpenClose(true);
     }
   }, []);
