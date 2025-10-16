@@ -144,6 +144,9 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
             radius="sm"
             value={inputSearch}
             onValueChange={handleChangeInput}
+            classNames={{
+              input: "pr-8",
+            }}
           />
           {inputSearch && (
             <i
