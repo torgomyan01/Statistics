@@ -401,7 +401,6 @@ function Page() {
                   className="w-full border border-gray-200 dark:border-gray-600 rounded-2xl overflow-hidden"
                   shadow="none"
                   isHeaderSticky
-                  isStriped
                   selectionMode="single"
                 >
                   <TableHeader>
@@ -452,6 +451,7 @@ function Page() {
                           {row.metric}
                         </TableCell>
                         <TableCell
+                          width="25%"
                           className={clsx(
                             "text-gray-900 dark:text-white text-center",
                             {
@@ -470,6 +470,7 @@ function Page() {
                           {row.v1}
                         </TableCell>
                         <TableCell
+                          width="25%"
                           className={clsx(
                             "text-gray-900 dark:text-white text-center",
                             {

@@ -22,10 +22,10 @@ function AccordionItem({ item, index }: IThisProps) {
     (state: IStateSiteInfo) => state.siteInfo.selectedGroup,
   );
 
+  const getInput: any = document.querySelector(".left-menu-input input");
+
   // Open on mount if the left menu input exists
   useEffect(() => {
-    const getInput: any = document.querySelector(".left-menu-input input");
-
     if (getInput && getInput.value) {
       setOpenClose(true);
     }
@@ -38,7 +38,10 @@ function AccordionItem({ item, index }: IThisProps) {
       return;
     }
 
-    if (groupCode.some((group: string) => group === groupName)) {
+    if (
+      groupCode.some((group: string) => group === groupName) &&
+      !getInput.value
+    ) {
       setOpenClose(true);
       return;
     }
@@ -47,7 +50,8 @@ function AccordionItem({ item, index }: IThisProps) {
       indicatorCode.length &&
       item.some((_i) =>
         indicatorCode.some((indicator) => _i.indicator_code === indicator),
-      )
+      ) &&
+      !getInput.value
     ) {
       setOpenClose(true);
     }
