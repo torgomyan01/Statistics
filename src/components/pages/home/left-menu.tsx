@@ -147,7 +147,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
           />
           {inputSearch && (
             <i
-              className="fa-solid fa-xmark absolute top-1/2 right-3 transform -translate-y-1/2 cursor-pointer dark:text-white"
+              className="fa-solid fa-xmark absolute top-1/2 right-3 transform -translate-y-1/2 cursor-pointer dark:text-white !bg-white dark:bg-gray-800 px-2 py-1 rounded-full"
               onClick={() => setInputSearch("")}
             />
           )}
