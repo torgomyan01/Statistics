@@ -39,21 +39,21 @@ function Header({ onToggleSidebar }: HeaderProps) {
 
         <Link
           href={SITE_URL.HOME}
-          className="flex-js-c gap-2 md:min-w-[370px] mr-6"
+          className="flex-jc-c sm:flex-js-c gap-2 md:min-w-[370px] sm:mr-6"
         >
           <Image
             src="/images/logo.svg"
             alt="logo site"
             width={300}
             height={300}
-            className="w-[190px] h-auto"
+            className="w-[120px] sm:w-[190px] h-auto"
           />
           {/*<h1 className="text-xl sm:text-[18px] font-extrabold text-gray-900 dark:text-white tracking-tight mb-0">*/}
           {/*  RankinWorld*/}
           {/*</h1>*/}
         </Link>
 
-        <div className="flex-js-c gap-4 w-full">
+        <div className="flex-je-c sm:flex-js-c gap-4 sm:w-full">
           {menu.map((menu) => (
             <Link
               key={menu.name}

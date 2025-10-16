@@ -56,7 +56,6 @@ function Home() {
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      setIsLoading(true);
       FindAllInfo();
     }, 500);
   }, [indicatorCode.selectedIndicator, indicatorCode.selectedScoreYear]);
@@ -73,6 +72,7 @@ function Home() {
   async function FindAllInfo() {
     const codes = indicatorCode.selectedIndicator;
     try {
+      setIsLoading(true);
       const res = await ActionGetManyInfo(codes);
 
       const all = (res.data || []) as ICountryData[];

@@ -22,17 +22,14 @@ function AccordionItem({ item, index }: IThisProps) {
     (state: IStateSiteInfo) => state.siteInfo.selectedGroup,
   );
 
-  // Open on mount if the left menu input exists
   useEffect(() => {
     const getInput: any = document.querySelector(".left-menu-input input");
 
     if (getInput && getInput.value) {
       setOpenClose(true);
     }
-  }, []);
+  }, [indicatorCode]);
 
-  // Auto-open when matching group/indicator conditions are met.
-  // Never force-close here so the user can manually close afterwards.
   useEffect(() => {
     if (openClose) {
       return;
@@ -79,7 +76,7 @@ function AccordionItem({ item, index }: IThisProps) {
       const newGroup = [...groupCode, groupName];
       dispatch(setSelectGroup(newGroup));
     }
-  }, [openClose, groupCode, groupName, dispatch]);
+  }, [openClose, groupCode, groupName, dispatch, indicatorCode]);
 
   return (
     <div className="px-2 border-b border-gray-300 dark:border-gray-700 py-2 mb-1 w-full max-w-full">
