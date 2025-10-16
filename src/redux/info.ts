@@ -12,7 +12,7 @@ interface IInterface {
 const initialState: IInterface = {
   allIndicators: null,
   selectedIndicator: ["EG.ELC.ACCS.ZS"],
-  selectedScoreYear: 2020,
+  selectedScoreYear: 2024,
   selectedCountry: null,
   selectedCountryIso: null,
   selectedGroup: [],
