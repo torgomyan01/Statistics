@@ -373,7 +373,7 @@ function Home() {
           />
 
           {isLoading && (
-            <div className="absolute top-[140px] left-4 z-[1000]">
+            <div className="absolute top-[110px] left-4 z-[1000]">
               <Spinner color="secondary" className="dark:text-white" />
             </div>
           )}
@@ -398,7 +398,9 @@ function Home() {
                       className="rounded-lg bg-gray-50 dark:bg-gray-700 w-full"
                     >
                       <div className="flex-jsb-c gap-2 px-3 py-2">
-                        <span className="text-[14px]">{name || "-"}</span>
+                        <span className="sm:text-[14px] text-[12px]">
+                          {name || "-"}
+                        </span>
                         {name ? (
                           <i
                             className="fa-solid fa-xmark w-6 h-6 rounded-full flex justify-center items-center cursor-pointer bg-white dark:bg-gray-600 text-red-600 dark:text-red-400 shadow hover:shadow-md"
@@ -412,7 +414,7 @@ function Home() {
                       </div>
                       {name && (
                         <ul className="px-3 pb-3 text-gray-700 dark:text-gray-300">
-                          <li className="text-[14px]">
+                          <li className="text-[12px] sm:text-[14px]">
                             <b>Area:</b>{" "}
                             {formatLargeNumber(
                               (areaByCode as any)[iso3]?.[
@@ -421,7 +423,7 @@ function Home() {
                             )}{" "}
                             sq km
                           </li>
-                          <li className="text-[14px]">
+                          <li className="text-[12px] sm:text-[14px]">
                             <b>Population:</b>{" "}
                             {formatLargeNumber(
                               (populationByCode as any)[iso3]?.[
@@ -429,17 +431,17 @@ function Home() {
                               ] || 0,
                             )}
                           </li>
-                          <li className="text-[14px]">
+                          <li className="text-[12px] sm:text-[14px]">
                             <b>Number of indicators with data:</b>{" "}
                             {stats?.activeIndicator}
                           </li>
-                          <li className="text-[14px]">
+                          <li className="text-[12px] sm:text-[14px]">
                             <b>Average score:</b>{" "}
                             {stats?.activeScore === "NaN"
                               ? "-"
                               : stats?.activeScore}
                           </li>
-                          <li className="text-[14px] flex-js-s gap-2">
+                          <li className="text-[12px] sm:text-[14px] flex-js-s gap-2">
                             <b>Best:</b>{" "}
                             {stats?.maxScore?.Indicator_name
                               ? `${stats?.maxScore.score ?? "-"} - ${stats?.maxScore.Indicator_name}`
@@ -455,10 +457,10 @@ function Home() {
 
             {hoverCountryName && (
               <ul className="mt-3 rounded-[12px] p-4 bg-white dark:bg-gray-800 shadow-xl dark:shadow-2xl text-gray-700 dark:text-gray-300 md:block hidden">
-                <li className="text-[14px]">
+                <li className="text-[12px] sm:text-[14px]">
                   <b>Hover Country:</b> {hoverCountryName || "-"}
                 </li>
-                <li className="text-[14px]">
+                <li className="text-[12px] sm:text-[14px]">
                   <b>Selected Year:</b> {indicatorCode.selectedScoreYear}
                 </li>
                 {hoverCountryName &&
@@ -470,7 +472,7 @@ function Home() {
                     const stats = iso3 ? computeCountryStats(iso3) : null;
                     return (
                       <>
-                        <li className="text-[14px]">
+                        <li className="text-[12px] sm:text-[14px]">
                           <b>Area:</b>{" "}
                           {formatLargeNumber(
                             (areaByCode as any)[iso3]?.[
@@ -479,7 +481,7 @@ function Home() {
                           )}{" "}
                           sq km
                         </li>
-                        <li className="text-[14px]">
+                        <li className="text-[12px] sm:text-[14px]">
                           <b>Population:</b>{" "}
                           {formatLargeNumber(
                             (populationByCode as any)[iso3]?.[
@@ -487,17 +489,17 @@ function Home() {
                             ] || 0,
                           )}
                         </li>
-                        <li className="text-[14px]">
+                        <li className="text-[12px] sm:text-[14px]">
                           <b>Number of indicators with data:</b>{" "}
                           {stats?.activeIndicator}
                         </li>
-                        <li className="text-[14px]">
+                        <li className="text-[12px] sm:text-[14px]">
                           <b>Average score:</b>{" "}
                           {stats?.activeScore === "NaN"
                             ? "-"
                             : stats?.activeScore}
                         </li>
-                        <li className="text-[14px] flex-js-s gap-2">
+                        <li className="text-[12px] sm:text-[14px] flex-js-s gap-2">
                           <b>Best:</b>{" "}
                           {stats?.maxScore?.Indicator_name
                             ? `${stats?.maxScore.score ?? "-"} - ${stats?.maxScore.Indicator_name}`
