@@ -69,25 +69,26 @@ function Home() {
     };
   });
 
-  async function FindAllInfo() {
+  function FindAllInfo() {
     const codes = indicatorCode.selectedIndicator;
-    try {
-      setIsLoading(true);
-      const res = await ActionGetManyInfo(codes);
-
-      const all = (res.data || []) as ICountryData[];
-      const byCode = new Map<string, ICountryData[]>();
-      all.forEach((row) => {
-        const arr = byCode.get(row.indicator_code) || [];
-        arr.push(row);
-        byCode.set(row.indicator_code, arr);
+    setIsLoading(true);
+    ActionGetManyInfo(codes)
+      .then((res) => {
+        const all = (res.data || []) as ICountryData[];
+        const byCode = new Map<string, ICountryData[]>();
+        all.forEach((row) => {
+          const arr = byCode.get(row.indicator_code) || [];
+          arr.push(row);
+          byCode.set(row.indicator_code, arr);
+        });
+        setIndicators(Array.from(byCode.values()));
+      })
+      .catch(() => {
+        setIndicators([]);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-      setIndicators(Array.from(byCode.values()));
-    } catch (error) {
-      setIndicators([]);
-    } finally {
-      setIsLoading(false);
-    }
   }
 
   const getCountryColor = useCallback(
