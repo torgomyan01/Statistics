@@ -48,9 +48,17 @@ function Home() {
     [90, 180],
   ];
 
+  const debounceTimerRef: any = useRef(null);
+
   useEffect(() => {
-    setIsLoading(true);
-    FindAllInfo();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      setIsLoading(true);
+      FindAllInfo();
+    }, 500);
   }, [indicatorCode.selectedIndicator, indicatorCode.selectedScoreYear]);
 
   const [panCountryName, setPanCountryName] = useState<string | null>(null);
@@ -379,7 +387,7 @@ function Home() {
 
           <div className="w-[calc(100%-30px)] md:w-[420px] dark:text-white absolute top-[80px] md:top-4 right-4 z-[1000] rounded-xl cursor-default transition-colors duration-500">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl dark:shadow-2xl">
-              <h4 className="font-bold mb-3 text-gray-900 dark:text-white">
+              <h4 className="text-[14px] sm:text-[16px] font-bold mb-1 sm:mb-3 text-gray-900 dark:text-white">
                 Selected countries
               </h4>
               <div className="flex md:flex-col gap-3">

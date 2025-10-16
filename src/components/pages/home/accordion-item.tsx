@@ -22,10 +22,10 @@ function AccordionItem({ item, index }: IThisProps) {
     (state: IStateSiteInfo) => state.siteInfo.selectedGroup,
   );
 
-  const getInput: any = document.querySelector(".left-menu-input input");
-
   // Open on mount if the left menu input exists
   useEffect(() => {
+    const getInput: any = document.querySelector(".left-menu-input input");
+
     if (getInput && getInput.value) {
       setOpenClose(true);
     }
@@ -37,6 +37,7 @@ function AccordionItem({ item, index }: IThisProps) {
     if (openClose) {
       return;
     }
+    const getInput: any = document.querySelector(".left-menu-input input");
 
     if (
       groupCode.some((group: string) => group === groupName) &&
