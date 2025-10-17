@@ -67,7 +67,7 @@ function AccordionItem({ item, index }: IThisProps) {
     if (!userOverrideRef.current && searchActive) {
       setOpenClose(true);
     }
-  }, [groupCode, indicatorCode, item, groupName]);
+  }, [groupCode, groupName, indicatorCode]);
 
   const CheckGroup = useCallback(() => {
     const isInGroup = groupCode.some((group: string) => group === groupName);

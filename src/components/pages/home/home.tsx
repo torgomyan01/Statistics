@@ -63,6 +63,8 @@ function Home() {
   const findAllInfo = useCallback(async () => {
     const codes = indicatorCode.selectedIndicator || [];
 
+    setIsLoading(true);
+
     // Read cached rows from IndexedDB in parallel
     const cachedMap = await idbGetManyIndicators(codes);
     const cachedCodes: string[] = [];

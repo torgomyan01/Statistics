@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setInfo, setRemoveInfo } from "@/redux/info";
 
@@ -7,19 +8,24 @@ interface IThisProps {
 
 function ItemIndicator({ data }: IThisProps) {
   const dispatch = useDispatch();
-  const indicatorCode = useSelector(
-    (state: IStateSiteInfo) => state.siteInfo.selectedIndicator,
+  // Select only what this component needs (boolean) to minimize re-renders
+  const check = useSelector((state: IStateSiteInfo) =>
+    state.siteInfo.selectedIndicator.includes(data.indicator_code),
   );
 
-  function AddNewIndicatorCode(code: string) {
-    dispatch(setInfo(code));
-  }
+  const AddNewIndicatorCode = useCallback(
+    (code: string) => {
+      dispatch(setInfo(code));
+    },
+    [dispatch],
+  );
 
-  function RemoveIndicatorCode(code: string) {
-    dispatch(setRemoveInfo(code));
-  }
-
-  const check = indicatorCode.includes(data.indicator_code);
+  const RemoveIndicatorCode = useCallback(
+    (code: string) => {
+      dispatch(setRemoveInfo(code));
+    },
+    [dispatch],
+  );
 
   return check ? (
     <div
@@ -43,4 +49,4 @@ function ItemIndicator({ data }: IThisProps) {
   );
 }
 
-export default ItemIndicator;
+export default memo(ItemIndicator);

@@ -74,8 +74,71 @@ export const scoreToColor = (
     return "#0000";
   }
 
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const { hex } = adjustSaturation([r, g, b], alpha);
+  return hex;
 };
+
+export function adjustSaturation(rgb: number[], percentFromLeft: number) {
+  // rgb: [R, G, B] values (0–255)
+  // percentFromLeft: 0–100 (0 = white, 100 = original color)
+
+  const [r, g, b] = rgb.map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  // Convert to HSV
+  let h;
+  if (delta === 0) {
+    h = 0;
+  } else if (max === r) {
+    h = ((g - b) / delta) % 6;
+  } else if (max === g) {
+    h = (b - r) / delta + 2;
+  } else {
+    h = (r - g) / delta + 4;
+  }
+  h = Math.round(h * 60);
+  if (h < 0) {
+    h += 360;
+  }
+
+  const v = max;
+
+  const newS = percentFromLeft / 100;
+
+  // Convert back to RGB
+  const c = newS * v;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r1, g1, b1;
+
+  if (h < 60) {
+    [r1, g1, b1] = [c, x, 0];
+  } else if (h < 120) {
+    [r1, g1, b1] = [x, c, 0];
+  } else if (h < 180) {
+    [r1, g1, b1] = [0, c, x];
+  } else if (h < 240) {
+    [r1, g1, b1] = [0, x, c];
+  } else if (h < 300) {
+    [r1, g1, b1] = [x, 0, c];
+  } else {
+    [r1, g1, b1] = [c, 0, x];
+  }
+
+  const R = Math.round((r1 + m) * 255);
+  const G = Math.round((g1 + m) * 255);
+  const B = Math.round((b1 + m) * 255);
+
+  // Convert to HEX
+  const hex = `#${[R, G, B]
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase()}`;
+
+  return { rgb: [R, G, B], hex };
+}
 
 export const createSlug = (title: string) => {
   if (!title) {

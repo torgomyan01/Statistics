@@ -158,7 +158,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
     !datasets || indicators === null || filteredRes === null;
 
   const loadingContent = (
-    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 relative z-[1000] pt-[200px]">
+    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full hidden sm:block border-r border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 relative z-[1000] pt-[200px]">
       <div className="w-full h-full flex-jc-c">
         <Spinner color="secondary" className="dark:text-white" />
       </div>

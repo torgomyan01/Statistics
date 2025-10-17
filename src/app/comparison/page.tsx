@@ -17,6 +17,7 @@ import MainTemplate from "@/components/common/main-template/main-template";
 import RightInfo from "@/components/pages/home/right-info";
 import { useSelector } from "react-redux";
 import { ActionGetManyInfo } from "@/app/actions/industry/get-many";
+import { idbGetManyIndicators, idbSetIndicatorRows } from "@/utils/indexedDb";
 import clsx from "clsx";
 const peopleData: any = people_info;
 
@@ -35,9 +36,25 @@ function Page() {
   );
 
   useEffect(() => {
-    // Տվյալների բեռնում
+    const LS_KEY = "countries:list";
+    try {
+      const cached = localStorage.getItem(LS_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as ICountry[];
+        setCountries(parsed);
+        return;
+      }
+    } catch {
+      // ignore cache errors
+    }
     ActionGetAllCountry().then(({ data }) => {
-      setCountries(data as ICountry[]);
+      const list = (data || []) as ICountry[];
+      setCountries(list);
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(list));
+      } catch {
+        // ignore quota/caching errors
+      }
     });
   }, []);
 
@@ -95,32 +112,39 @@ function Page() {
       return;
     }
 
-    // Seed from cache immediately for instant rendering
-    const seeded: Record<string, ICountryData[]> = {} as any;
-    selectedIndicator.forEach((code) => {
-      const cached = indicatorCacheRef.current.get(code);
-      if (cached) {
-        seeded[code] = cached;
+    (async () => {
+      // Seed from IndexedDB cache first
+      const cachedMap = await idbGetManyIndicators(selectedIndicator);
+      const seeded: Record<string, ICountryData[]> = {} as any;
+      selectedIndicator.forEach((code) => {
+        const cached =
+          (cachedMap.get(code) as ICountryData[] | undefined) ||
+          indicatorCacheRef.current.get(code);
+        if (cached && cached.length) {
+          indicatorCacheRef.current.set(code, cached);
+          seeded[code] = cached;
+        }
+      });
+      if (isMounted && Object.keys(seeded).length) {
+        setIndicatorDatasets((prev) => ({ ...prev, ...seeded }));
       }
-    });
-    if (Object.keys(seeded).length) {
-      setIndicatorDatasets((prev) => ({ ...prev, ...seeded }));
-    }
 
-    // Fetch only missing indicators, update state incrementally
-    const missing = selectedIndicator.filter(
-      (code) => !indicatorCacheRef.current.has(code),
-    );
+      // Fetch only missing indicators, update state incrementally
+      const missing = selectedIndicator.filter(
+        (code) => !indicatorCacheRef.current.has(code),
+      );
 
-    if (!missing.length) {
-      setIsLoading(false);
-      return () => {
-        isMounted = false;
-      };
-    }
+      if (!missing.length) {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+        return;
+      }
 
-    setIsLoading(true);
-    ActionGetManyInfo(missing).then((resp) => {
+      if (isMounted) {
+        setIsLoading(true);
+      }
+      const resp = await ActionGetManyInfo(missing);
       if (!isMounted) {
         return;
       }
@@ -132,14 +156,22 @@ function Page() {
         grouped.set(row.indicator_code, arr);
       });
       const next: Record<string, ICountryData[]> = {} as any;
-      missing.forEach((code) => {
-        const arr = grouped.get(code) || [];
-        indicatorCacheRef.current.set(code, arr);
-        next[code] = arr;
-      });
+      await Promise.all(
+        missing.map(async (code) => {
+          const arr = grouped.get(code) || [];
+          indicatorCacheRef.current.set(code, arr);
+          next[code] = arr;
+          if (arr.length) {
+            await idbSetIndicatorRows(code, arr);
+          }
+        }),
+      );
+      if (!isMounted) {
+        return;
+      }
       setIndicatorDatasets((prev) => ({ ...prev, ...next }));
       setIsLoading(false);
-    });
+    })();
 
     return () => {
       isMounted = false;
@@ -194,23 +226,6 @@ function Page() {
       r1: number | null;
       r2: number | null;
     }[] = [];
-    // // Population
-    // const popOne = (populationByCode[isoOne] || {})[selectedScoreYear] || 0;
-    // const popTwo = (populationByCode[isoTwo] || {})[selectedScoreYear] || 0;
-    // rows.push({
-    //   metric: "Population, total",
-    //   v1: (popOne as number).toLocaleString(),
-    //   v2: (popTwo as number).toLocaleString(),
-    // });
-
-    // // Area
-    // const areaOne = (areaByCode[isoOne] || {})[selectedScoreYear] || 0;
-    // const areaTwo = (areaByCode[isoTwo] || {})[selectedScoreYear] || 0;
-    // rows.push({
-    //   metric: "Surface area (sq. km)",
-    //   v1: (areaOne as number).toLocaleString(),
-    //   v2: (areaTwo as number).toLocaleString(),
-    // });
 
     // Indicators
     selectedIndicator?.forEach((code) => {
@@ -401,7 +416,6 @@ function Page() {
                   className="w-full border border-gray-200 dark:border-gray-600 rounded-2xl overflow-hidden"
                   shadow="none"
                   isHeaderSticky
-                  selectionMode="single"
                 >
                   <TableHeader>
                     <TableColumn
@@ -456,14 +470,11 @@ function Page() {
                             "text-gray-900 dark:text-white text-center",
                             {
                               "bg-green-200 dark:bg-green-800":
-                                (row.r1 !== null &&
-                                  row.r2 !== null &&
-                                  row.v1 !== "-" &&
-                                  row.v2 !== "-" &&
-                                  (row.r1 as number) < (row.r2 as number)) ||
-                                (row.v1 !== "-" &&
-                                  (row.v2 === "-" || row.r2 === null) &&
-                                  row.r1 !== null),
+                                row.r1 !== null &&
+                                row.r2 !== null &&
+                                row.v1 !== "-" &&
+                                row.v2 !== "-" &&
+                                (row.r1 as number) < (row.r2 as number),
                             },
                           )}
                         >
@@ -475,14 +486,11 @@ function Page() {
                             "text-gray-900 dark:text-white text-center",
                             {
                               "bg-green-200 dark:bg-green-800":
-                                (row.r2 !== null &&
-                                  row.r1 !== null &&
-                                  row.v1 !== "-" &&
-                                  row.v2 !== "-" &&
-                                  (row.r2 as number) < (row.r1 as number)) ||
-                                (row.v2 !== "-" &&
-                                  (row.v1 === "-" || row.r1 === null) &&
-                                  row.r2 !== null),
+                                row.r2 !== null &&
+                                row.r1 !== null &&
+                                row.v1 !== "-" &&
+                                row.v2 !== "-" &&
+                                (row.r2 as number) < (row.r1 as number),
                             },
                           )}
                         >

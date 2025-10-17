@@ -52,17 +52,27 @@ $green: #1e4a2f;
     color: #0000;
   }
 
-  .MuiSlider-markLabel {
-    @media (max-width: 1024px) {
-      display: none;
+  [data-index="16"] {
+    left: calc(100% + 25px) !important;
+    display: block !important;
+
+    @media (max-width: 768px) {
+      left: calc(100% - 25px) !important;
     }
   }
-}
 
-.dark {
-  .comparison-page.slider-site {
-    .MuiSlider-markLabel {
-      color: #fff;
+  .MuiSlider-valueLabelOpen {
+    left: -27px !important;
+  }
+
+  [data-index="0"] {
+    display: block !important;
+  }
+
+  .MuiSlider-markLabel {
+    color: #000 !important;
+    @media (max-width: 1200px) {
+      display: none;
     }
   }
 }
