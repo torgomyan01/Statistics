@@ -11,8 +11,8 @@ interface IThisProps {
 }
 
 const marks = Array.from({ length: 20 }, (_, i) => ({
-  value: 1960 + i * 5,
-  label: `${1960 + i * 5}`,
+  value: 1960 + i * 4,
+  label: `${1960 + i * 4} ${1960 + i * 4 === 2024 ? "(Low Data)" : ""}`,
 }));
 
 function valuetext(value: number) {
@@ -64,7 +64,7 @@ function RightInfo({ absolute = true }: IThisProps) {
         <Slider
           color="primary"
           aria-label="Always visible"
-          defaultValue={2024}
+          defaultValue={2023}
           min={1960}
           max={2024}
           getAriaValueText={valuetext}

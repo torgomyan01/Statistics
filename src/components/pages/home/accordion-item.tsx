@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import ItemIndicator from "@/components/common/item-indicator/item-indicator";
 import { useDispatch, useSelector } from "react-redux";
@@ -22,44 +22,59 @@ function AccordionItem({ item, index }: IThisProps) {
     (state: IStateSiteInfo) => state.siteInfo.selectedGroup,
   );
 
-  useEffect(() => {
-    const getInput: any = document.querySelector(".left-menu-input input");
-
-    if (getInput && getInput.value) {
-      setOpenClose(true);
-    }
-  }, [indicatorCode]);
+  // Track whether user has manually overridden open state for the current context
+  const lastContextKeyRef = useRef<string>("");
+  const userOverrideRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (openClose) {
-      return;
-    }
     const getInput: any = document.querySelector(".left-menu-input input");
+    const searchActive = Boolean(getInput?.value);
 
-    if (
-      groupCode.some((group: string) => group === groupName) &&
-      !getInput?.value
-    ) {
-      setOpenClose(true);
+    // Build a context signature; when this changes, reset manual override
+    const hasIndicatorInGroup = item.some((_i) =>
+      indicatorCode.some((indicator) => _i.indicator_code === indicator),
+    );
+    const isGroupSelected = groupCode.some(
+      (group: string) => group === groupName,
+    );
+    const contextKey = `${searchActive ? 1 : 0}|${isGroupSelected ? 1 : 0}|${
+      hasIndicatorInGroup ? 1 : 0
+    }`;
+
+    const contextChanged = contextKey !== lastContextKeyRef.current;
+    if (contextChanged) {
+      lastContextKeyRef.current = contextKey;
+      userOverrideRef.current = false;
+
+      // Default behavior on context change
+      if (searchActive) {
+        setOpenClose(true);
+        return;
+      }
+      if (isGroupSelected) {
+        setOpenClose(true);
+        return;
+      }
+      if (hasIndicatorInGroup) {
+        setOpenClose(true);
+        return;
+      }
+      setOpenClose(false);
       return;
     }
 
-    if (
-      indicatorCode.length &&
-      item.some((_i) =>
-        indicatorCode.some((indicator) => _i.indicator_code === indicator),
-      ) &&
-      !getInput?.value
-    ) {
+    // If user has not overridden and search becomes active while same context, still force open
+    if (!userOverrideRef.current && searchActive) {
       setOpenClose(true);
     }
-  }, [groupCode, indicatorCode, item, groupName, openClose]);
+  }, [groupCode, indicatorCode, item, groupName]);
 
   const CheckGroup = useCallback(() => {
     const isInGroup = groupCode.some((group: string) => group === groupName);
 
     // If currently open, allow user to close regardless of auto-open reasons
     if (openClose) {
+      userOverrideRef.current = true;
       setOpenClose(false);
       if (isInGroup) {
         const newGroup = groupCode.filter(
@@ -71,6 +86,7 @@ function AccordionItem({ item, index }: IThisProps) {
     }
 
     // If currently closed, open and reflect selection in global state
+    userOverrideRef.current = true;
     setOpenClose(true);
     if (!isInGroup) {
       const newGroup = [...groupCode, groupName];

@@ -49,6 +49,49 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
     setIndicators(datasets);
   }, [datasets]);
 
+  // Cache datasets in localStorage to avoid refetching on subsequent visits
+  useEffect(() => {
+    const CACHE_KEY = "allIndicatorsCache";
+    const CACHE_TTL_MS = 24 * 60 * 60 * 1000 * 7; // 7 days
+
+    type CachedIndicators = {
+      data: ICountryData[];
+      ts: number;
+    };
+
+    try {
+      const cachedRaw =
+        typeof window !== "undefined" ? localStorage.getItem(CACHE_KEY) : null;
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw) as CachedIndicators;
+        const isFresh = Date.now() - cached.ts < CACHE_TTL_MS;
+        if (isFresh && cached.data?.length) {
+          dispatch(setAllIndicators(cached.data as ICountryData[]));
+          return;
+        }
+      }
+    } catch (error) {
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(CACHE_KEY);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    ActionGetSelectedCountry().then(({ data }) => {
+      dispatch(setAllIndicators(data as ICountryData[]));
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({ data, ts: Date.now() }),
+        );
+      }
+    });
+  }, [dispatch]);
+
   useEffect(() => {
     const getAllGroup = [
       ...new Set(indicators?.map((data) => data.object.group)),
@@ -63,11 +106,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
     }
   }, [indicators]);
 
-  useEffect(() => {
-    ActionGetSelectedCountry().then(({ data }) => {
-      dispatch(setAllIndicators(data as ICountryData[]));
-    });
-  }, []);
+  // Initial fetch moved into the caching effect above
 
   const [searchResult, setSearchResult] = useState<
     (ICountryData[] | undefined)[] | null

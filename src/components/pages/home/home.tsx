@@ -11,6 +11,7 @@ import { formatLargeNumber, scoreToColor } from "@/utils/helpers";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectCountryIso } from "@/redux/info";
 import { ActionGetManyInfo } from "@/app/actions/industry/get-many";
+import { idbSetIndicatorRows, idbGetManyIndicators } from "@/utils/indexedDb";
 import MainTemplate from "@/components/common/main-template/main-template";
 import { Spinner } from "@heroui/react";
 import SelectCountry from "./select-country";
@@ -40,6 +41,8 @@ function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const geoJsonRef = useRef<L.GeoJSON<any> | null>(null);
 
+  // console.log(indicators, "indicators");
+
   const data: any = countriesData;
   const { features } = data;
 
@@ -47,18 +50,6 @@ function Home() {
     [-90, -180],
     [90, 180],
   ];
-
-  const debounceTimerRef: any = useRef(null);
-
-  useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      FindAllInfo();
-    }, 500);
-  }, [indicatorCode.selectedIndicator, indicatorCode.selectedScoreYear]);
 
   const [panCountryName, setPanCountryName] = useState<string | null>(null);
 
@@ -69,11 +60,34 @@ function Home() {
     };
   });
 
-  function FindAllInfo() {
-    const codes = indicatorCode.selectedIndicator;
+  const findAllInfo = useCallback(async () => {
+    const codes = indicatorCode.selectedIndicator || [];
+
+    // Read cached rows from IndexedDB in parallel
+    const cachedMap = await idbGetManyIndicators(codes);
+    const cachedCodes: string[] = [];
+    const cachedLists: ICountryData[][] = [];
+    codes.forEach((code) => {
+      const rows = cachedMap.get(code) as ICountryData[] | undefined;
+      if (rows && rows.length) {
+        cachedCodes.push(code);
+        cachedLists.push(rows);
+      }
+    });
+
+    // Determine which codes are missing from cache
+    const missingCodes = codes.filter((c) => !cachedCodes.includes(c));
+
+    if (missingCodes.length === 0) {
+      setIndicators(cachedLists);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
-    ActionGetManyInfo(codes)
-      .then((res) => {
+
+    ActionGetManyInfo(missingCodes)
+      .then(async (res) => {
         const all = (res.data || []) as ICountryData[];
         const byCode = new Map<string, ICountryData[]>();
         all.forEach((row) => {
@@ -81,15 +95,39 @@ function Home() {
           arr.push(row);
           byCode.set(row.indicator_code, arr);
         });
-        setIndicators(Array.from(byCode.values()));
-      })
-      .catch(() => {
-        setIndicators([]);
+
+        const freshLists = missingCodes
+          .map((code) => byCode.get(code) || [])
+          .filter((arr) => arr.length);
+
+        // Persist fresh lists to IndexedDB
+        await Promise.all(
+          missingCodes.map(async (code) => {
+            const rows = byCode.get(code) || [];
+            if (rows.length) {
+              await idbSetIndicatorRows(code, rows);
+            }
+          }),
+        );
+
+        setIndicators([...cachedLists, ...freshLists]);
       })
       .finally(() => {
         setIsLoading(false);
       });
-  }
+  }, [indicatorCode.selectedIndicator]);
+
+  const debounceTimerRef: any = useRef(null);
+
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      findAllInfo();
+    }, 500);
+  }, [indicatorCode.selectedIndicator, indicatorCode.selectedScoreYear]);
 
   const getCountryColor = useCallback(
     (countryName: string, countryIso: string) => {
@@ -169,6 +207,7 @@ function Home() {
       (hoverCountryName &&
         hoverCountryName.toLowerCase() ===
           feature.properties.name.toLowerCase());
+
     const isHovered =
       selectedCountryCodeHover &&
       (feature as any).properties?.iso_a3_eh === selectedCountryCodeHover;
@@ -356,7 +395,6 @@ function Home() {
             maxBoundsViscosity={1.0}
           >
             <PanToCountry countryName={panCountryName} />
-            {/* <MapLoadingHandler />  */}
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
               noWrap={true}
@@ -369,11 +407,6 @@ function Home() {
               onEachFeature={onEachCountry as any}
               ref={geoJsonRef as any}
             />
-
-            {/* <CollisionController
-              labels={countryScoreLabels}
-              onFiltered={() => {}}
-            /> */}
           </MapContainer>
           <SelectCountry
             allCountry={allCountry}
