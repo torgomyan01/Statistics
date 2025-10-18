@@ -12,6 +12,7 @@ interface IThisProps {
 function AccordionItem({ item, index }: IThisProps) {
   const dispatch = useDispatch();
   const [openClose, setOpenClose] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
 
   const groupName = `Group ${index + 1}`;
 
@@ -26,10 +27,26 @@ function AccordionItem({ item, index }: IThisProps) {
   const lastContextKeyRef = useRef<string>("");
   const userOverrideRef = useRef<boolean>(false);
 
+  // Monitor search input changes
   useEffect(() => {
     const getInput: any = document.querySelector(".left-menu-input input");
-    const searchActive = Boolean(getInput?.value);
+    if (getInput) {
+      const isSearchActive = Boolean(getInput.value);
+      setSearchActive(isSearchActive);
 
+      const handleInputChange = () => {
+        setSearchActive(Boolean(getInput.value));
+      };
+
+      getInput.addEventListener("input", handleInputChange);
+      return () => {
+        getInput.removeEventListener("input", handleInputChange);
+      };
+    }
+  }, []);
+
+  // Auto-open/close logic based on context
+  useEffect(() => {
     // Build a context signature; when this changes, reset manual override
     const hasIndicatorInGroup = item.some((_i) =>
       indicatorCode.some((indicator) => _i.indicator_code === indicator),
@@ -63,36 +80,37 @@ function AccordionItem({ item, index }: IThisProps) {
       return;
     }
 
-    // If user has not overridden and search becomes active while same context, still force open
-    if (!userOverrideRef.current && searchActive) {
+    // Only auto-open if user hasn't manually overridden and search becomes active
+    if (!userOverrideRef.current && searchActive && !openClose) {
       setOpenClose(true);
     }
-  }, [groupCode, groupName, indicatorCode]);
+  }, [groupCode, groupName, indicatorCode, searchActive, openClose, item]);
 
   const CheckGroup = useCallback(() => {
     const isInGroup = groupCode.some((group: string) => group === groupName);
 
-    // If currently open, allow user to close regardless of auto-open reasons
-    if (openClose) {
-      userOverrideRef.current = true;
-      setOpenClose(false);
+    // Toggle the accordion state
+    const newOpenState = !openClose;
+    setOpenClose(newOpenState);
+    userOverrideRef.current = true;
+
+    // Update group selection based on new state
+    if (newOpenState) {
+      // Opening - add to selected groups if not already there
+      if (!isInGroup) {
+        const newGroup = [...groupCode, groupName];
+        dispatch(setSelectGroup(newGroup));
+      }
+    } else {
+      // Closing - remove from selected groups if it's there
       if (isInGroup) {
         const newGroup = groupCode.filter(
           (group: string) => group !== groupName,
         );
         dispatch(setSelectGroup(newGroup));
       }
-      return;
     }
-
-    // If currently closed, open and reflect selection in global state
-    userOverrideRef.current = true;
-    setOpenClose(true);
-    if (!isInGroup) {
-      const newGroup = [...groupCode, groupName];
-      dispatch(setSelectGroup(newGroup));
-    }
-  }, [openClose, groupCode, groupName, dispatch, indicatorCode]);
+  }, [openClose, groupCode, groupName, dispatch]);
 
   return (
     <div className="px-2 border-b border-gray-300 dark:border-gray-700 py-2 mb-1 w-full max-w-full">
@@ -107,12 +125,8 @@ function AccordionItem({ item, index }: IThisProps) {
       >
         {groupName}
         <i
-          className={clsx(
-            "fa-solid fa-chevron-down text-[11px] transform transition",
-            {
-              "rotate-180": openClose,
-            },
-          )}
+          className="fa-solid fa-chevron-down text-[11px] transform transition"
+          style={{ transform: openClose ? "rotate(180deg)" : "rotate(0deg)" }}
         />
       </div>
 

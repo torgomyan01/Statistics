@@ -87,3 +87,19 @@ $green: #1e4a2f;
 .score-label div {
   transition: all 0.2s ease;
 }
+
+/* Custom marker styles */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-marker div {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.custom-marker div:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+}
