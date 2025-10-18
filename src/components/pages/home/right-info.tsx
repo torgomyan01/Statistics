@@ -1,5 +1,5 @@
 import Slider from "@mui/material/Slider";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useCallback, useRef } from "react";
 import { setYear } from "@/redux/info";
 import clsx from "clsx";
@@ -23,6 +23,10 @@ function RightInfo({ absolute = true }: IThisProps) {
   const parentPath = usePathname();
   const dispatch = useDispatch();
   const debounceTimerRef: any = useRef(null);
+
+  const selctedYear = useSelector(
+    (state: IStateSiteInfo) => state.siteInfo.selectedScoreYear,
+  );
 
   const handleSliderChange = useCallback(
     (value: any) => {
@@ -64,7 +68,7 @@ function RightInfo({ absolute = true }: IThisProps) {
         <Slider
           color="primary"
           aria-label="Always visible"
-          defaultValue={2023}
+          defaultValue={selctedYear}
           min={1960}
           max={2024}
           getAriaValueText={valuetext}
