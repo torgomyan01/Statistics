@@ -9,26 +9,15 @@ interface IThisProps {
 function MainTemplate({ children }: IThisProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
-  const toggleSidebar = useCallback(() => {
-    setIsSidebarOpen((v) => !v);
-  }, []);
-
-  const closeSidebar = useCallback(() => {
-    setIsSidebarOpen(false);
+  const toggleSidebar = useCallback((isOpenSidebar: boolean) => {
+    setIsSidebarOpen(isOpenSidebar);
   }, []);
 
   return (
     <>
-      <Header onToggleSidebar={toggleSidebar} />
+      <Header onToggleSidebar={toggleSidebar} isOpenSidebar={isSidebarOpen} />
       <div className="w-full h-[calc(100dvh-60px)] flex-jsb-s">
-        <div className="hidden md:block h-full">
-          <LeftMenu />
-        </div>
-
-        {/* Mobile drawer */}
-        <div className="md:hidden">
-          <LeftMenu isOpen={isSidebarOpen} onClose={closeSidebar} />
-        </div>
+        <LeftMenu isOpen={isSidebarOpen} />
 
         {children}
       </div>

@@ -1,11 +1,4 @@
-import {
-  GeoJSON,
-  MapContainer,
-  TileLayer,
-  useMap,
-  Marker,
-  Popup,
-} from "react-leaflet";
+import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Feature, Geometry } from "geojson";
 import L from "leaflet";
@@ -47,8 +40,6 @@ function Home() {
   const [indicators, setIndicators] = useState<ICountryData[][] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const geoJsonRef = useRef<L.GeoJSON<any> | null>(null);
-
-  // console.log(indicators, "indicators");
 
   const data: any = countriesData;
   const { features } = data;
@@ -355,42 +346,6 @@ function Home() {
     return map;
   }, []);
 
-  // Function to calculate country center coordinates
-  const getCountryCenter = (feature: any): [number, number] => {
-    const layer = (L as any).geoJSON(feature);
-    const bounds = layer.getBounds();
-    if (bounds && bounds.isValid()) {
-      const center = bounds.getCenter();
-      return [center.lat, center.lng];
-    }
-    return [0, 0]; // fallback
-  };
-
-  // Create custom marker icon
-  const createCustomIcon = (count: string) => {
-    return L.divIcon({
-      html: `<div style="
-        background: rgba(255, 255, 255, 0.95);
-        border: 2px solid #615fff;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 9px;
-        color: #1e40af;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        text-align: center;
-        line-height: 1;
-      ">${count}</div>`,
-      className: "custom-marker",
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
-    });
-  };
-
   const PanToCountry: React.FC<{ countryName: string | null }> = ({
     countryName,
   }) => {
@@ -452,37 +407,6 @@ function Home() {
               onEachFeature={onEachCountry as any}
               ref={geoJsonRef as any}
             />
-
-            {/* Display indicator counts on each country */}
-            {features.map((feature: any, index: number) => {
-              const countryName = feature.properties.name;
-              const countryIso = feature.properties.iso_a3_eh;
-              const center = getCountryCenter(feature);
-              const indicatorCount = getCountryScore(countryName, countryIso);
-
-              // Only show marker if there are indicators selected
-              if (indicatorCode.selectedIndicator.length === 0) {
-                return null;
-              }
-
-              return (
-                <Marker
-                  key={`marker-${index}`}
-                  position={center}
-                  icon={createCustomIcon(indicatorCount)}
-                >
-                  <Popup>
-                    <div className="text-center">
-                      <strong>{countryName}</strong>
-                      <br />
-                      <span className="text-sm text-gray-600">
-                        Indicators with data: {indicatorCount}
-                      </span>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
           </MapContainer>
           <SelectCountry
             allCountry={allCountry}

@@ -1,13 +1,7 @@
 import { Input } from "@heroui/input";
 import AccordionItem from "@/components/pages/home/accordion-item";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { ActionGetSelectedCountry } from "@/app/actions/industry/get";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActionGetAllIndicatorsWithCountryCounts } from "@/app/actions/industry/get";
 import { Spinner } from "@heroui/react";
 import { useDispatch, useSelector } from "react-redux";
 import { setAllIndicators, setClearAll, setInfo } from "@/redux/info";
@@ -16,10 +10,9 @@ import { useParams } from "next/navigation";
 
 interface LeftMenuProps {
   isOpen?: boolean;
-  onClose?: () => void;
 }
 
-const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
+const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false }) => {
   const dispatch = useDispatch();
   const { indicator_code }: { indicator_code: string } = useParams();
 
@@ -34,7 +27,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
   }, [indicator_code]);
 
   const [filteredRes, setFilteredRes] = useState<
-    (ICountryData[] | undefined)[] | null
+    (IIndicatorData[] | undefined)[] | null
   >(null);
   const indicatorCode = useSelector(
     (state: IStateSiteInfo) => state.siteInfo.selectedIndicator,
@@ -43,7 +36,11 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
   const datasets = useSelector(
     (state: IStateSiteInfo) => state.siteInfo.allIndicators,
   );
-  const [indicators, setIndicators] = useState<ICountryData[] | null>(null);
+  const [indicators, setIndicators] = useState<IIndicatorData[] | null>(null);
+
+  const selectedYear = useSelector(
+    (state: IStateSiteInfo) => state.siteInfo.selectedScoreYear,
+  );
 
   useEffect(() => {
     setIndicators(datasets);
@@ -51,66 +48,30 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
 
   // Cache datasets in localStorage to avoid refetching on subsequent visits
   useEffect(() => {
-    const CACHE_KEY = "allIndicatorsCache";
-    const CACHE_TTL_MS = 24 * 60 * 60 * 1000 * 7; // 7 days
-
-    type CachedIndicators = {
-      data: ICountryData[];
-      ts: number;
-    };
-
-    try {
-      const cachedRaw =
-        typeof window !== "undefined" ? localStorage.getItem(CACHE_KEY) : null;
-      if (cachedRaw) {
-        const cached = JSON.parse(cachedRaw) as CachedIndicators;
-        const isFresh = Date.now() - cached.ts < CACHE_TTL_MS;
-        if (isFresh && cached.data?.length) {
-          dispatch(setAllIndicators(cached.data as ICountryData[]));
-          return;
-        }
-      }
-    } catch (error) {
-      try {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(CACHE_KEY);
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    ActionGetSelectedCountry().then(({ data }) => {
-      dispatch(setAllIndicators(data as ICountryData[]));
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem(
-          CACHE_KEY,
-          JSON.stringify({ data, ts: Date.now() }),
-        );
-      }
+    setIndicators(null);
+    ActionGetAllIndicatorsWithCountryCounts(selectedYear).then(({ data }) => {
+      dispatch(setAllIndicators(data as IIndicatorData[]));
     });
-  }, [dispatch]);
+  }, [selectedYear]);
 
   useEffect(() => {
-    const getAllGroup = [
-      ...new Set(indicators?.map((data) => data.object.group)),
-    ];
+    const getAllGroup = [...new Set(indicators?.map((data) => data.group))];
 
     const CreateGroup = getAllGroup.map((group) =>
-      indicators?.filter((data) => data.object.group === group),
+      indicators?.filter((data) => data.group === group),
     );
 
     if (CreateGroup) {
-      setFilteredRes(CreateGroup);
+      setFilteredRes(CreateGroup as (IIndicatorData[] | undefined)[]);
     }
   }, [indicators]);
 
   // Initial fetch moved into the caching effect above
 
   const [searchResult, setSearchResult] = useState<
-    (ICountryData[] | undefined)[] | null
+    (IIndicatorData[] | undefined)[] | null
   >(null);
+
   const [inputSearch, setInputSearch] = useState<string>("");
 
   const debounceTimerRef: any = useRef(null);
@@ -128,17 +89,15 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
           setSearchResult(null);
 
           const search = datasets?.filter((_indicator) =>
-            _indicator.Indicator_name.toLowerCase().includes(
-              value.toLowerCase(),
-            ),
+            _indicator.indicator_name
+              ?.toLowerCase()
+              .includes(value.toLowerCase()),
           );
 
-          const getAllGroup = [
-            ...new Set(search?.map((data) => data.object.group)),
-          ];
+          const getAllGroup = [...new Set(search?.map((data) => data.group))];
 
           const CreateGroup = getAllGroup.map((group) =>
-            search?.filter((data) => data.object.group === group),
+            search?.filter((data) => data.group === group),
           );
 
           setSearchResult(CreateGroup);
@@ -157,62 +116,113 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
   const isDataLoading =
     !datasets || indicators === null || filteredRes === null;
 
-  const loadingContent = (
-    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full hidden sm:block border-r border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 relative z-[1000] pt-[200px]">
-      <div className="w-full h-full flex-jc-c">
-        <Spinner color="secondary" className="dark:text-white" />
-      </div>
-    </div>
-  );
+  // Desktop renders content directly; mobile renders as drawer overlay
 
-  const content = (
-    <div className="sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative md:z-[1000] p-0">
-      <div className="px-4 pt-4 h-full overflow-y-auto flex-js-s flex-col">
-        <div
-          className={clsx(
-            "flex w-full flex-wrap md:flex-nowrap gap-4 mb-2 relative",
-            {
-              "mb-6": !indicatorCode.length,
-            },
-          )}
-        >
-          <Input
-            label="Find Indicator"
-            type="text"
-            className="w-full h-12 left-menu-input"
-            radius="sm"
-            value={inputSearch}
-            onValueChange={handleChangeInput}
-            classNames={{
-              input: "pr-8",
-            }}
-          />
-          {inputSearch && (
-            <i
-              className="fa-solid fa-xmark absolute top-1/2 right-3 transform -translate-y-1/2 cursor-pointer dark:text-white !bg-white dark:bg-gray-800 px-2 py-1 rounded-full"
-              onClick={() => setInputSearch("")}
-            />
-          )}
+  return (
+    <div
+      className={clsx(
+        "sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 fixed md:relative md:z-[1000] z-[10000000] p-0 transform translate-x-0 transition",
+        {
+          "translate-x-[-100%]": isOpen,
+        },
+      )}
+    >
+      {isDataLoading ? (
+        <div className="w-full h-full flex-jc-c">
+          <Spinner color="secondary" className="dark:text-white" />
         </div>
-
-        {indicatorCode.length ? (
-          <div className="w-full py-2 flex-je-c mb-4">
-            <span
-              className="text-[13px] flex-je-c gap-1 cursor-pointer dark:text-gray-400 dark:hover:text-white"
-              onClick={ClearAll}
-            >
-              Clear all
-              <i className="fa-solid fa-xmark"></i>
-            </span>
+      ) : (
+        <div
+          className="px-4 pt-4 h-full overflow-y-auto"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "start",
+          }}
+        >
+          <div
+            className={clsx(
+              "flex w-full flex-wrap md:flex-nowrap gap-4 mb-2 relative",
+              {
+                "mb-6": !indicatorCode.length,
+              },
+            )}
+          >
+            <Input
+              label="Find Indicator"
+              type="text"
+              className="w-full h-12 left-menu-input"
+              radius="sm"
+              value={inputSearch}
+              onValueChange={handleChangeInput}
+              classNames={{
+                input: "pr-8",
+              }}
+            />
+            {inputSearch && (
+              <i
+                className="fa-solid fa-xmark absolute top-1/2 right-3 transform -translate-y-1/2 cursor-pointer dark:text-white !bg-white dark:bg-gray-800 px-2 py-1 rounded-full"
+                onClick={() => setInputSearch("")}
+              />
+            )}
           </div>
-        ) : null}
 
-        {inputSearch ? (
-          searchResult ? (
-            <div className="w-full h-[calc(100%-120px)] overflow-y-auto pr-2 flex-js-s flex-col">
-              {searchResult.length ? (
-                <>
-                  {searchResult.map(
+          {indicatorCode.length ? (
+            <div className="w-full py-2 flex-je-c mb-4">
+              <span
+                className="text-[13px] flex-je-c gap-1 cursor-pointer dark:text-gray-400 dark:hover:text-white"
+                onClick={ClearAll}
+              >
+                Clear all
+                <i className="fa-solid fa-xmark"></i>
+              </span>
+            </div>
+          ) : null}
+
+          {inputSearch ? (
+            searchResult ? (
+              <div
+                className="w-full overflow-y-auto pr-2"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "start",
+                  height: "calc(100% - 120px)",
+                }}
+              >
+                {!searchResult.length ? (
+                  <div className="w-full h-[400px] flex-jc-c">
+                    <span className="text-[14px]">No indicator found</span>
+                  </div>
+                ) : (
+                  <>
+                    {searchResult.map((data, index) => (
+                      <AccordionItem
+                        item={data || []}
+                        key={`accardion-code-${index}`}
+                        index={index}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="w-full h-[300px] flex-jc-c">
+                <Spinner color="secondary" className="dark:text-white" />
+              </div>
+            )
+          ) : (
+            <>
+              {filteredRes ? (
+                <div
+                  className="w-full h-[calc(100%-120px)] overflow-y-auto"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "start",
+                  }}
+                >
+                  {filteredRes.map(
                     (data, index) =>
                       data && (
                         <AccordionItem
@@ -222,66 +232,18 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false, onClose }) => {
                         />
                       ),
                   )}
-                </>
+                </div>
               ) : (
                 <div className="w-full h-[400px] flex-jc-c">
-                  <span className="text-[14px]">No indicator found</span>
+                  <Spinner color="secondary" className="dark:text-white" />
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="w-full h-[300px] flex-jc-c">
-              <Spinner color="secondary" className="dark:text-white" />
-            </div>
-          )
-        ) : (
-          <>
-            {filteredRes ? (
-              <div className="w-full h-[calc(100%-120px)] overflow-y-auto flex-js-s flex-col">
-                {filteredRes.map(
-                  (data, index) =>
-                    data && (
-                      <AccordionItem
-                        item={data}
-                        key={`accardion-code-${index}`}
-                        index={index}
-                      />
-                    ),
-                )}
-              </div>
-            ) : (
-              <div className="w-full h-[400px] flex-jc-c">
-                {/* Spinner-ի գույնը dark mode-ում դարձնում ենք white */}
-                <Spinner color="secondary" className="dark:text-white" />
-              </div>
-            )}
-          </>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
-
-  // Desktop renders content directly; mobile renders as drawer overlay
-  const isMobileDrawer = useMemo(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(max-width: 767px)").matches,
-    [],
-  );
-
-  if (!isMobileDrawer) {
-    return (isDataLoading ? loadingContent : content) as any;
-  }
-
-  return isOpen ? (
-    <div className="fixed inset-0 z-[2000] h-full">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute left-0 top-0 h-full w-[80%]">
-        {isDataLoading ? loadingContent : content}
-      </div>
-    </div>
-  ) : null;
 };
 
 export default LeftMenu;

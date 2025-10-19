@@ -105,7 +105,17 @@ export function adjustSaturation(rgb: number[], percentFromLeft: number) {
 
   const v = max;
 
-  const newS = percentFromLeft / 100;
+  // Adjusted saturation logic based on percentFromLeft
+  let newS;
+  if (percentFromLeft >= 70) {
+    newS = 1.0;
+  } // 100% saturation
+  else if (percentFromLeft >= 30) {
+    newS = 0.6;
+  } // 60% saturation
+  else {
+    newS = 0.2;
+  } // 20% saturation
 
   // Convert back to RGB
   const c = newS * v;

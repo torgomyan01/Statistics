@@ -19,23 +19,32 @@ const menu = [
 ];
 
 interface HeaderProps {
-  onToggleSidebar?: () => void;
+  onToggleSidebar?: (isOpenSidebar: boolean) => void;
+  isOpenSidebar?: boolean;
 }
 
-function Header({ onToggleSidebar }: HeaderProps) {
+function Header({ onToggleSidebar, isOpenSidebar }: HeaderProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+
+  const toggleSidebar = () => onToggleSidebar?.(!isOpenSidebar);
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-xl sticky top-0 z-20 transition-colors duration-500 border-b border-indigo-500/30">
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-row justify-between items-center">
-        <button
-          className="md:hidden sm:mr-2 p-2 rounded-lg bg-indigo-500 min-w-10 text-white hover:bg-indigo-600 transition"
-          aria-label="Toggle Menu"
-          onClick={onToggleSidebar}
-        >
-          <i className="fa-solid fa-bars"></i>
-        </button>
+        <div className="min-w-10 mt-1 block sm:hidden">
+          {isOpenSidebar ? (
+            <i
+              className="fa-regular fa-xmark text-[28px]"
+              onClick={toggleSidebar}
+            ></i>
+          ) : (
+            <i
+              className="fa-regular fa-bars text-[28px]"
+              onClick={toggleSidebar}
+            ></i>
+          )}
+        </div>
 
         <Link
           href={SITE_URL.HOME}

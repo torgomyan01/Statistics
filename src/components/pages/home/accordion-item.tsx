@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import clsx from "clsx";
 import ItemIndicator from "@/components/common/item-indicator/item-indicator";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectGroup } from "@/redux/info";
 
 interface IThisProps {
-  item: ICountryData[];
+  item: IIndicatorData[];
   index: number;
 }
 
 function AccordionItem({ item, index }: IThisProps) {
   const dispatch = useDispatch();
-  const [openClose, setOpenClose] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const userManuallyOpenedRef = useRef(false);
 
   const groupName = `Group ${index + 1}`;
 
@@ -22,10 +23,6 @@ function AccordionItem({ item, index }: IThisProps) {
   const groupCode = useSelector(
     (state: IStateSiteInfo) => state.siteInfo.selectedGroup,
   );
-
-  // Track whether user has manually overridden open state for the current context
-  const lastContextKeyRef = useRef<string>("");
-  const userOverrideRef = useRef<boolean>(false);
 
   // Monitor search input changes
   useEffect(() => {
@@ -45,72 +42,46 @@ function AccordionItem({ item, index }: IThisProps) {
     }
   }, []);
 
-  // Auto-open/close logic based on context
+  // Auto-open groups when search is active
   useEffect(() => {
-    // Build a context signature; when this changes, reset manual override
-    const hasIndicatorInGroup = item.some((_i) =>
-      indicatorCode.some((indicator) => _i.indicator_code === indicator),
-    );
-    const isGroupSelected = groupCode.some(
-      (group: string) => group === groupName,
-    );
-    const contextKey = `${searchActive ? 1 : 0}|${isGroupSelected ? 1 : 0}|${
-      hasIndicatorInGroup ? 1 : 0
-    }`;
-
-    const contextChanged = contextKey !== lastContextKeyRef.current;
-    if (contextChanged) {
-      lastContextKeyRef.current = contextKey;
-      userOverrideRef.current = false;
-
-      // Default behavior on context change
-      if (searchActive) {
-        setOpenClose(true);
-        return;
-      }
-      if (isGroupSelected) {
-        setOpenClose(true);
-        return;
-      }
-      if (hasIndicatorInGroup) {
-        setOpenClose(true);
-        return;
-      }
-      setOpenClose(false);
-      return;
+    if (searchActive) {
+      setIsOpen(true);
+      userManuallyOpenedRef.current = false; // Reset manual flag when search is active
     }
+  }, [searchActive]);
 
-    // Only auto-open if user hasn't manually overridden and search becomes active
-    if (!userOverrideRef.current && searchActive && !openClose) {
-      setOpenClose(true);
+  // Auto-open groups when they contain selected indicators (only if not manually opened)
+  useEffect(() => {
+    if (!searchActive && !userManuallyOpenedRef.current) {
+      const hasSelectedIndicators = item.some((data) =>
+        indicatorCode.includes(data.indicator_code),
+      );
+      setIsOpen(hasSelectedIndicators);
     }
-  }, [groupCode, groupName, indicatorCode, searchActive, openClose, item]);
+  }, [searchActive, indicatorCode, item]);
 
-  const CheckGroup = useCallback(() => {
-    const isInGroup = groupCode.some((group: string) => group === groupName);
+  const toggleGroup = useCallback(() => {
+    const newOpenState = !isOpen;
+    setIsOpen(newOpenState);
 
-    // Toggle the accordion state
-    const newOpenState = !openClose;
-    setOpenClose(newOpenState);
-    userOverrideRef.current = true;
+    // Mark as manually opened/closed
+    userManuallyOpenedRef.current = true;
 
-    // Update group selection based on new state
+    // Update Redux state
     if (newOpenState) {
       // Opening - add to selected groups if not already there
-      if (!isInGroup) {
-        const newGroup = [...groupCode, groupName];
-        dispatch(setSelectGroup(newGroup));
+      if (!groupCode.includes(groupName)) {
+        const newGroups = [...groupCode, groupName];
+        dispatch(setSelectGroup(newGroups));
       }
     } else {
       // Closing - remove from selected groups if it's there
-      if (isInGroup) {
-        const newGroup = groupCode.filter(
-          (group: string) => group !== groupName,
-        );
-        dispatch(setSelectGroup(newGroup));
+      if (groupCode.includes(groupName)) {
+        const newGroups = groupCode.filter((group) => group !== groupName);
+        dispatch(setSelectGroup(newGroups));
       }
     }
-  }, [openClose, groupCode, groupName, dispatch]);
+  }, [isOpen, groupCode, groupName, dispatch]);
 
   return (
     <div className="px-2 border-b border-gray-300 dark:border-gray-700 py-2 mb-1 w-full max-w-full">
@@ -118,20 +89,20 @@ function AccordionItem({ item, index }: IThisProps) {
         className={clsx(
           "flex-jsb-c gap-4 text-[14px] cursor-pointer font-semibold dark:text-white",
           {
-            "mb-2": openClose,
+            "mb-2": isOpen,
           },
         )}
-        onClick={CheckGroup}
+        onClick={toggleGroup}
       >
         {groupName}
         <i
           className="fa-solid fa-chevron-down text-[11px] transform transition"
-          style={{ transform: openClose ? "rotate(180deg)" : "rotate(0deg)" }}
+          style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
         />
       </div>
 
       <div className="pl-2">
-        {openClose &&
+        {isOpen &&
           item.map((data, index) => (
             <ItemIndicator key={`data__${index}`} data={data} />
           ))}

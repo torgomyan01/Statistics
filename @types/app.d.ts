@@ -9,7 +9,7 @@ declare interface ICountryData {
 
 declare interface IStateSiteInfo {
   siteInfo: {
-    allIndicators: ICountryData[] | null;
+    allIndicators: IIndicatorData[] | null;
     selectedIndicator: string[];
     selectedCountry: string | null;
     selectedScoreYear: number;
@@ -26,4 +26,11 @@ declare interface ICountry {
   iso3: string;
   numcode: number;
   phonecode: number;
+}
+
+declare interface IIndicatorData {
+  indicator_code: string;
+  indicator_name: string;
+  country_count: number;
+  group: string;
 }
