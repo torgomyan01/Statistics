@@ -123,7 +123,7 @@ const LeftMenu: React.FC<LeftMenuProps> = ({ isOpen = false }) => {
       className={clsx(
         "sm:min-w-[400px] w-full sm:w-[400px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 fixed md:relative md:z-[1000] z-[10000000] p-0 transform translate-x-0 transition",
         {
-          "translate-x-[-100%]": isOpen,
+          "translate-x-[-100%]": !isOpen,
         },
       )}
     >
