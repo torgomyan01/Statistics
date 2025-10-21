@@ -191,10 +191,11 @@ function Home() {
   }, [indicators, indicatorCode.selectedScoreYear]);
 
   function PrintColor(countryName: string, countryIso: string) {
-    const avg =
-      avgScoreByCountryKey.get(countryIso) ||
-      avgScoreByCountryKey.get(countryName) ||
-      0;
+    const avg = avgScoreByCountryKey.get(countryIso) || 0;
+
+    if (avg === 0) {
+      return "#0000";
+    }
 
     const countryScore = getCountryScore(countryName, countryIso).split("/");
 
