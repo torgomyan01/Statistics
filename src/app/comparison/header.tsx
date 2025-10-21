@@ -32,7 +32,7 @@ function Header({ onToggleSidebar, isOpenSidebar }: HeaderProps) {
   return (
     <header className="bg-white dark:bg-gray-900 shadow-xl sticky top-0 z-20 transition-colors duration-500 border-b border-indigo-500/30">
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-row justify-between items-center">
-        <div className="min-w-10 mt-1 block sm:hidden">
+        <div className="min-w-10 mt-1 block md:hidden">
           {isOpenSidebar ? (
             <i
               className="fa-regular fa-xmark text-[28px]"
