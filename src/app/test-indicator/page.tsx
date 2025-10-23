@@ -10,7 +10,7 @@ function TestIndicatorPage() {
       console.log(res);
     });
 
-    ActionGetAllInfo("SL.EMP.1524.SP.FE.NE.ZS").then((res) => {
+    ActionGetAllInfo("SI.POV.GAPS").then((res) => {
       console.log(res);
 
       const result = res.data.filter(
